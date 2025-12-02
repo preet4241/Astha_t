@@ -1,32 +1,103 @@
 from telethon import TelegramClient, events
+from telethon.tl.types import InlineKeyboardMarkup, InlineKeyboardButton
+import os
 
-api_id = 'YOUR_API_ID'
-api_hash = 'YOUR_API_HASH'
-bot_token = 'YOUR_BOT_TOKEN'
+api_id = int(os.getenv('API_ID', '22880380'))
+api_hash = os.getenv('API_HASH', '08dae0d98b2dc8f8dc4e6a9ff97a071b')
+bot_token = os.getenv('BOT_TOKEN', '8028312869:AAErsD7WmHHw11c2lL2Jdoj_DBU4bqRv_kQ')
+owner_id = int(os.getenv('OWNER_ID', '0'))
 
 client = TelegramClient('bot', api_id, api_hash).start(bot_token=bot_token)
 
+async def show_owner_panel(event):
+    """Owner panel ke liye buttons dikhao"""
+    buttons = [
+        [InlineKeyboardButton('Users dekho', callback_data=b'users')],
+        [InlineKeyboardButton('Stats', callback_data=b'stats')],
+        [InlineKeyboardButton('Messages bhejo', callback_data=b'broadcast')],
+        [InlineKeyboardButton('Close', callback_data=b'close')],
+    ]
+    await event.respond(
+        '🔐 Owner Panel\n\nKya karna hai?',
+        buttons=InlineKeyboardMarkup(buttons)
+    )
+
+async def show_user_panel(event, user_name):
+    """User panel ke liye buttons dikhao"""
+    buttons = [
+        [InlineKeyboardButton('Help', callback_data=b'help')],
+        [InlineKeyboardButton('Commands', callback_data=b'commands')],
+        [InlineKeyboardButton('Close', callback_data=b'close')],
+    ]
+    await event.respond(
+        f'👋 Welcome {user_name}!\n\nAap kya karna chahte ho?',
+        buttons=InlineKeyboardMarkup(buttons)
+    )
+
 @client.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
-    await event.respond('Namaste! Main aapka bot hoon. Kaise madad kar sakta hoon?')
+    sender = await event.get_sender()
+    
+    if sender.id == owner_id:
+        await show_owner_panel(event)
+    else:
+        await show_user_panel(event, sender.first_name or 'User')
+    
     raise events.StopPropagation
+
+@client.on(events.CallbackQuery)
+async def callback_handler(event):
+    sender = await event.get_sender()
+    callback_data = event.data
+    
+    if callback_data == b'close':
+        await event.delete()
+        return
+    
+    # Owner callbacks
+    if sender.id == owner_id:
+        if callback_data == b'users':
+            await event.edit('👥 Total Users: 100\n\n(Database integration pending)')
+        elif callback_data == b'stats':
+            await event.edit('📊 Bot Stats:\n- Messages: 500\n- Users: 100\n- Active: 50')
+        elif callback_data == b'broadcast':
+            await event.edit('📢 Broadcast message likho:\n(Reply karo message ke saath)')
+    
+    # User callbacks
+    else:
+        if callback_data == b'help':
+            await event.edit('📖 Help:\n- /hello - Greeting\n- /time - Time dekho\n- /help - Ye message')
+        elif callback_data == b'commands':
+            await event.edit('/start - Start\n/hello - Hello\n/time - Time\n/help - Help')
 
 @client.on(events.NewMessage(pattern='/help'))
 async def help_handler(event):
-    help_text = """
-Available Commands:
-/start - Bot ko start karo
-/help - Ye help message dekho
+    sender = await event.get_sender()
+    
+    if sender.id == owner_id:
+        help_text = """
+🔐 Owner Commands:
+/start - Owner panel
+/broadcast - Message bhejo sab ko
+/stats - Bot statistics
+/users - Users ki list
+        """
+    else:
+        help_text = """
+👤 User Commands:
+/start - Start karo
 /hello - Hello bolo
-/time - Current time dekho
-    """
+/time - Current time
+/help - Ye help message
+        """
+    
     await event.respond(help_text)
     raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern='/hello'))
 async def hello_handler(event):
     sender = await event.get_sender()
-    await event.respond(f'Hello {sender.first_name}! Aap kaise ho?')
+    await event.respond(f'👋 Hello {sender.first_name}! Aap kaise ho?')
     raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern='/time'))
@@ -34,13 +105,13 @@ async def time_handler(event):
     from datetime import datetime
     current_time = datetime.now().strftime("%H:%M:%S")
     current_date = datetime.now().strftime("%d-%m-%Y")
-    await event.respond(f'Date: {current_date}\nTime: {current_time}')
+    await event.respond(f'📅 Date: {current_date}\n⏰ Time: {current_time}')
     raise events.StopPropagation
 
 @client.on(events.NewMessage)
 async def echo_handler(event):
     if event.is_private and not event.text.startswith('/'):
-        await event.respond(f'Aapne likha: {event.text}')
+        await event.respond(f'📝 Aapne likha: {event.text}')
 
-print('Bot chal raha hai...')
+print('🚀 Bot chal raha hai...')
 client.run_until_disconnected()
