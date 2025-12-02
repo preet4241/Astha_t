@@ -1,50 +1,53 @@
-from telethon.tl.custom import InlineBuilder
+from telethon.tl.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-def get_owner_main_keyboard(client):
-    buttons = InlineBuilder(client)
-    buttons.row(buttons.button('🛠️ Tools', data=b'owner_tools'))
-    buttons.row(
-        buttons.button('👥 Users', data=b'owner_users'),
-        buttons.button('📢 Broadcast', data=b'owner_broadcast')
-    )
-    buttons.row(
-        buttons.button('📊 Status', data=b'owner_status'),
-        buttons.button('⚙️ Settings', data=b'owner_settings')
-    )
-    return buttons.build()
+def get_owner_main_keyboard():
+    buttons = [
+        [InlineKeyboardButton(text='🛠️ Tools', callback_data=b'owner_tools')],
+        [
+            InlineKeyboardButton(text='👥 Users', callback_data=b'owner_users'),
+            InlineKeyboardButton(text='📢 Broadcast', callback_data=b'owner_broadcast')
+        ],
+        [
+            InlineKeyboardButton(text='📊 Status', callback_data=b'owner_status'),
+            InlineKeyboardButton(text='⚙️ Settings', callback_data=b'owner_settings')
+        ],
+    ]
+    return InlineKeyboardMarkup(buttons)
 
-def get_user_main_keyboard(client):
-    buttons = InlineBuilder(client)
-    buttons.row(buttons.button('🛠️ Tools', data=b'user_tools'))
-    buttons.row(
-        buttons.button('👤 Profile', data=b'user_profile'),
-        buttons.button('❓ Help', data=b'user_help')
-    )
-    buttons.row(buttons.button('ℹ️ About', data=b'user_about'))
-    return buttons.build()
+def get_user_main_keyboard():
+    buttons = [
+        [InlineKeyboardButton(text='🛠️ Tools', callback_data=b'user_tools')],
+        [
+            InlineKeyboardButton(text='👤 Profile', callback_data=b'user_profile'),
+            InlineKeyboardButton(text='❓ Help', callback_data=b'user_help')
+        ],
+        [InlineKeyboardButton(text='ℹ️ About', callback_data=b'user_about')],
+    ]
+    return InlineKeyboardMarkup(buttons)
 
-def get_users_detail_keyboard(client):
-    buttons = InlineBuilder(client)
-    buttons.row(
-        buttons.button('🚫 Ban', data=b'user_ban'),
-        buttons.button('✅ Unban', data=b'user_unban')
-    )
-    buttons.row(buttons.button('ℹ️ Info', data=b'user_info'))
-    buttons.row(buttons.button('⬅️ Back', data=b'owner_users_back'))
-    return buttons.build()
+def get_users_detail_keyboard():
+    buttons = [
+        [
+            InlineKeyboardButton(text='🚫 Ban', callback_data=b'user_ban'),
+            InlineKeyboardButton(text='✅ Unban', callback_data=b'user_unban')
+        ],
+        [InlineKeyboardButton(text='ℹ️ Info', callback_data=b'user_info')],
+        [InlineKeyboardButton(text='⬅️ Back', callback_data=b'owner_users_back')],
+    ]
+    return InlineKeyboardMarkup(buttons)
 
-def get_settings_keyboard(client):
-    buttons = InlineBuilder(client)
-    buttons.row(buttons.button('🛠️ Tools', data=b'owner_tools'))
-    buttons.row(
-        buttons.button('✍️ Start Text', data=b'setting_start_text'),
-        buttons.button('🔄 Sudo-Force', data=b'setting_sudo_force')
-    )
-    buttons.row(buttons.button('👥 Handle Group', data=b'setting_handle_group'))
-    buttons.row(buttons.button('⬅️ Back', data=b'settings_back'))
-    return buttons.build()
+def get_settings_keyboard():
+    buttons = [
+        [InlineKeyboardButton(text='🛠️ Tools', callback_data=b'owner_tools')],
+        [
+            InlineKeyboardButton(text='✍️ Start Text', callback_data=b'setting_start_text'),
+            InlineKeyboardButton(text='🔄 Sudo-Force', callback_data=b'setting_sudo_force')
+        ],
+        [InlineKeyboardButton(text='👥 Handle Group', callback_data=b'setting_handle_group')],
+        [InlineKeyboardButton(text='⬅️ Back', callback_data=b'settings_back')],
+    ]
+    return InlineKeyboardMarkup(buttons)
 
-def get_back_keyboard(client):
-    buttons = InlineBuilder(client)
-    buttons.row(buttons.button('⬅️ Back', data=b'back_to_main'))
-    return buttons.build()
+def get_back_keyboard():
+    buttons = [[InlineKeyboardButton(text='⬅️ Back', callback_data=b'back_to_main')]]
+    return InlineKeyboardMarkup(buttons)
