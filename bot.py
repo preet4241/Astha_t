@@ -188,13 +188,129 @@ Admin & User Management System"""
         await event.edit(about_text, buttons=[[Button.inline('⬅️ Back', b'user_back')]])
     
     elif data == b'user_ban':
-        await event.edit('🚫 Ban User Feature\n\n(Coming soon...)', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+        all_users = get_all_users()
+        active_users = [u for u in all_users.values() if not u.get('banned', False) and u['user_id'] != owner_id]
+        
+        if not active_users:
+            await event.edit('⚠️ Koi active user nahi hai ban karne ke liye!', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+            return
+        
+        buttons = []
+        for user in active_users[:10]:  # First 10 users
+            btn_text = f"🚫 {user['first_name'][:15]} (@{user['username'][:15]})"
+            btn_data = f"action_ban_{user['user_id']}".encode()
+            buttons.append([Button.inline(btn_text, btn_data)])
+        
+        buttons.append([Button.inline('⬅️ Back', b'owner_users')])
+        await event.edit('🚫 BAN USER\n\n━━━━━━━━━━━━━━━━\nUser select karo:', buttons=buttons)
     
     elif data == b'user_unban':
-        await event.edit('✅ Unban User Feature\n\n(Coming soon...)', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+        all_users = get_all_users()
+        banned_users = [u for u in all_users.values() if u.get('banned', False)]
+        
+        if not banned_users:
+            await event.edit('⚠️ Koi banned user nahi hai!', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+            return
+        
+        buttons = []
+        for user in banned_users[:10]:  # First 10 users
+            btn_text = f"✅ {user['first_name'][:15]} (@{user['username'][:15]})"
+            btn_data = f"action_unban_{user['user_id']}".encode()
+            buttons.append([Button.inline(btn_text, btn_data)])
+        
+        buttons.append([Button.inline('⬅️ Back', b'owner_users')])
+        await event.edit('✅ UNBAN USER\n\n━━━━━━━━━━━━━━━━\nUser select karo:', buttons=buttons)
     
     elif data == b'user_info':
-        await event.edit('ℹ️ User Info\n\n(Coming soon...)', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+        all_users = get_all_users()
+        if not all_users:
+            await event.edit('⚠️ Koi user nahi hai database mein!', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+            return
+        
+        buttons = []
+        user_list = list(all_users.values())[:10]  # First 10 users
+        for user in user_list:
+            status = '✅' if not user.get('banned', False) else '🚫'
+            btn_text = f"{status} {user['first_name'][:15]} (@{user['username'][:15]})"
+            btn_data = f"action_info_{user['user_id']}".encode()
+            buttons.append([Button.inline(btn_text, btn_data)])
+        
+        buttons.append([Button.inline('⬅️ Back', b'owner_users')])
+        await event.edit('ℹ️ USER INFO\n\n━━━━━━━━━━━━━━━━\nUser select karo:', buttons=buttons)
+    
+    elif data.startswith(b'action_ban_'):
+        target_user_id = int(data.decode().split('_')[2])
+        user = get_user(target_user_id)
+        
+        if user and not user['banned']:
+            ban_user(target_user_id)
+            ban_text = f"""🚫 USER BANNED
+
+━━━━━━━━━━━━━━━━
+👤 User Details:
+  • Name: {user['first_name']}
+  • Username: @{user['username']}
+  • ID: {target_user_id}
+  • Status: 🚫 Banned
+
+━━━━━━━━━━━━━━━━"""
+            await event.edit(ban_text, buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+        else:
+            await event.edit('❌ User pehle se banned hai ya nahi mila!', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+    
+    elif data.startswith(b'action_unban_'):
+        target_user_id = int(data.decode().split('_')[2])
+        user = get_user(target_user_id)
+        
+        if user and user['banned']:
+            unban_user(target_user_id)
+            unban_text = f"""✅ USER UNBANNED
+
+━━━━━━━━━━━━━━━━
+👤 User Details:
+  • Name: {user['first_name']}
+  • Username: @{user['username']}
+  • ID: {target_user_id}
+  • Status: ✅ Active
+
+━━━━━━━━━━━━━━━━"""
+            await event.edit(unban_text, buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+        else:
+            await event.edit('❌ User banned nahi hai ya nahi mila!', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+    
+    elif data.startswith(b'action_info_'):
+        target_user_id = int(data.decode().split('_')[2])
+        user = get_user(target_user_id)
+        
+        if user:
+            status_emoji = '✅' if not user['banned'] else '🚫'
+            status_text = 'Active' if not user['banned'] else 'Banned'
+            
+            info_text = f"""ℹ️ USER INFORMATION
+
+━━━━━━━━━━━━━━━━
+👤 Profile:
+  • Name: {user['first_name']}
+  • Username: @{user['username']}
+  • User ID: {user['user_id']}
+
+📊 Activity:
+  • Messages: {user['messages']}
+  • Joined: {user['joined'][:10]}
+  • Status: {status_emoji} {status_text}
+
+━━━━━━━━━━━━━━━━"""
+            
+            buttons = []
+            if user['banned']:
+                buttons.append([Button.inline('✅ Unban User', f'action_unban_{target_user_id}'.encode())])
+            else:
+                buttons.append([Button.inline('🚫 Ban User', f'action_ban_{target_user_id}'.encode())])
+            buttons.append([Button.inline('⬅️ Back', b'owner_users')])
+            
+            await event.edit(info_text, buttons=buttons)
+        else:
+            await event.edit('❌ User nahi mila!', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
     
     elif data == b'owner_back':
         buttons = [
@@ -246,10 +362,150 @@ async def time_handler(event):
     await event.respond(f'⏰ {current_time}')
     raise events.StopPropagation
 
+@client.on(events.NewMessage(pattern='/ban'))
+async def ban_command_handler(event):
+    sender = await event.get_sender()
+    if sender.id != owner_id:
+        await event.respond('❌ Sirf owner hi ban kar sakta hai!')
+        raise events.StopPropagation
+    
+    args = event.text.split()
+    if len(args) < 2:
+        await event.respond('⚠️ Usage: /ban <user_id>\n\nExample: /ban 123456789')
+        raise events.StopPropagation
+    
+    try:
+        target_user_id = int(args[1])
+        user = get_user(target_user_id)
+        
+        if not user:
+            await event.respond(f'❌ User ID {target_user_id} database mein nahi mila!')
+            raise events.StopPropagation
+        
+        if user['banned']:
+            await event.respond(f'⚠️ User {user["first_name"]} (@{user["username"]}) pehle se banned hai!')
+            raise events.StopPropagation
+        
+        ban_user(target_user_id)
+        ban_text = f"""🚫 USER BANNED
+
+━━━━━━━━━━━━━━━━
+👤 User Details:
+  • Name: {user['first_name']}
+  • Username: @{user['username']}
+  • ID: {target_user_id}
+  • Status: 🚫 Banned
+
+━━━━━━━━━━━━━━━━"""
+        await event.respond(ban_text)
+        
+    except ValueError:
+        await event.respond('❌ Invalid user ID! Sirf numbers daliye.')
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern='/unban'))
+async def unban_command_handler(event):
+    sender = await event.get_sender()
+    if sender.id != owner_id:
+        await event.respond('❌ Sirf owner hi unban kar sakta hai!')
+        raise events.StopPropagation
+    
+    args = event.text.split()
+    if len(args) < 2:
+        await event.respond('⚠️ Usage: /unban <user_id>\n\nExample: /unban 123456789')
+        raise events.StopPropagation
+    
+    try:
+        target_user_id = int(args[1])
+        user = get_user(target_user_id)
+        
+        if not user:
+            await event.respond(f'❌ User ID {target_user_id} database mein nahi mila!')
+            raise events.StopPropagation
+        
+        if not user['banned']:
+            await event.respond(f'⚠️ User {user["first_name"]} (@{user["username"]}) banned nahi hai!')
+            raise events.StopPropagation
+        
+        unban_user(target_user_id)
+        unban_text = f"""✅ USER UNBANNED
+
+━━━━━━━━━━━━━━━━
+👤 User Details:
+  • Name: {user['first_name']}
+  • Username: @{user['username']}
+  • ID: {target_user_id}
+  • Status: ✅ Active
+
+━━━━━━━━━━━━━━━━"""
+        await event.respond(unban_text)
+        
+    except ValueError:
+        await event.respond('❌ Invalid user ID! Sirf numbers daliye.')
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern='/info'))
+async def info_command_handler(event):
+    sender = await event.get_sender()
+    if sender.id != owner_id:
+        await event.respond('❌ Sirf owner hi user info dekh sakta hai!')
+        raise events.StopPropagation
+    
+    args = event.text.split()
+    if len(args) < 2:
+        await event.respond('⚠️ Usage: /info <user_id>\n\nExample: /info 123456789')
+        raise events.StopPropagation
+    
+    try:
+        target_user_id = int(args[1])
+        user = get_user(target_user_id)
+        
+        if not user:
+            await event.respond(f'❌ User ID {target_user_id} database mein nahi mila!')
+            raise events.StopPropagation
+        
+        status_emoji = '✅' if not user['banned'] else '🚫'
+        status_text = 'Active' if not user['banned'] else 'Banned'
+        
+        info_text = f"""ℹ️ USER INFORMATION
+
+━━━━━━━━━━━━━━━━
+👤 Profile:
+  • Name: {user['first_name']}
+  • Username: @{user['username']}
+  • User ID: {user['user_id']}
+
+📊 Activity:
+  • Messages: {user['messages']}
+  • Joined: {user['joined'][:10]}
+  • Status: {status_emoji} {status_text}
+
+━━━━━━━━━━━━━━━━"""
+        
+        buttons = []
+        if user['banned']:
+            buttons.append([Button.inline('✅ Unban User', f'action_unban_{target_user_id}'.encode())])
+        else:
+            buttons.append([Button.inline('🚫 Ban User', f'action_ban_{target_user_id}'.encode())])
+        
+        await event.respond(info_text, buttons=buttons)
+        
+    except ValueError:
+        await event.respond('❌ Invalid user ID! Sirf numbers daliye.')
+    
+    raise events.StopPropagation
+
 @client.on(events.NewMessage)
 async def message_handler(event):
     sender = await event.get_sender()
     if event.is_private and not event.text.startswith('/'):
+        user = get_user(sender.id)
+        if user and user.get('banned', False):
+            await event.respond('🚫 Aap banned hain! Bot use nahi kar sakte.')
+            return
+        
         increment_messages(sender.id)
         await event.respond(f'📝 {event.text}')
 
