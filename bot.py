@@ -1,9 +1,8 @@
 from telethon import TelegramClient, events
-from telethon.tl.types import InlineKeyboardButton, InlineKeyboardMarkupClass
 import os
 from keyboards import (
-    owner_main_keyboard, user_main_keyboard, users_detail_keyboard,
-    settings_keyboard, back_keyboard
+    get_owner_main_keyboard, get_user_main_keyboard, get_users_detail_keyboard,
+    get_settings_keyboard, get_back_keyboard
 )
 
 api_id = int(os.getenv('API_ID', '22880380'))
@@ -20,12 +19,12 @@ async def start_handler(event):
     if sender.id == owner_id:
         await event.respond(
             '🔐 OWNER PANEL\n\nKya karna hai?',
-            buttons=InlineKeyboardMarkupClass(owner_main_keyboard)
+            buttons=get_owner_main_keyboard()
         )
     else:
         await event.respond(
             f'👋 Welcome {sender.first_name}!\n\nKya karna hai?',
-            buttons=InlineKeyboardMarkupClass(user_main_keyboard)
+            buttons=get_user_main_keyboard()
         )
     
     raise events.StopPropagation
@@ -39,45 +38,45 @@ async def callback_handler(event):
     is_owner = sender_obj.id == owner_id
     
     if callback_data == b'owner_tools':
-        await event.edit('🛠️ Tools (coming soon...)', buttons=InlineKeyboardMarkupClass(back_keyboard))
+        await event.edit('🛠️ Tools (coming soon...)', buttons=get_back_keyboard())
     
     elif callback_data == b'owner_users':
         users_text = """👥 USERS MANAGEMENT
-        
+
 📊 Total Users: 100
 🚫 Banned Users: 5
 ✅ Active Users: 95
 
 Kaunsa user manage karna hai?"""
-        await event.edit(users_text, buttons=InlineKeyboardMarkupClass(users_detail_keyboard))
+        await event.edit(users_text, buttons=get_users_detail_keyboard())
     
     elif callback_data == b'owner_broadcast':
-        await event.edit('📢 Broadcast message bhejo\n\n(Feature coming soon...)', buttons=InlineKeyboardMarkupClass(back_keyboard))
+        await event.edit('📢 Broadcast message bhejo\n\n(Feature coming soon...)', buttons=get_back_keyboard())
     
     elif callback_data == b'owner_status':
         status_text = """📊 BOT STATUS
-        
+
 ✅ Bot: Active
 ⏱️ Uptime: 24 hours
 📨 Messages Today: 500
 👥 Active Users: 95
 💾 Database: Connected"""
-        await event.edit(status_text, buttons=InlineKeyboardMarkupClass(back_keyboard))
+        await event.edit(status_text, buttons=get_back_keyboard())
     
     elif callback_data == b'owner_settings':
-        await event.edit('⚙️ SETTINGS', buttons=InlineKeyboardMarkupClass(settings_keyboard))
+        await event.edit('⚙️ SETTINGS', buttons=get_settings_keyboard())
     
     elif callback_data == b'user_tools':
-        await event.edit('🛠️ Tools (coming soon...)', buttons=InlineKeyboardMarkupClass(back_keyboard))
+        await event.edit('🛠️ Tools (coming soon...)', buttons=get_back_keyboard())
     
     elif callback_data == b'user_profile':
         profile_text = f"""👤 YOUR PROFILE
-        
+
 Name: {sender_obj.first_name}
 ID: {sender_obj.id}
 Username: @{sender_obj.username if sender_obj.username else 'Not set'}
 Status: Active"""
-        await event.edit(profile_text, buttons=InlineKeyboardMarkupClass(back_keyboard))
+        await event.edit(profile_text, buttons=get_back_keyboard())
     
     elif callback_data == b'user_help':
         help_text = """❓ HELP
@@ -86,51 +85,51 @@ Status: Active"""
 /hello - Hello bolo
 /time - Time dekho
 /help - Help message"""
-        await event.edit(help_text, buttons=InlineKeyboardMarkupClass(back_keyboard))
+        await event.edit(help_text, buttons=get_back_keyboard())
     
     elif callback_data == b'user_about':
         about_text = """ℹ️ ABOUT BOT
-        
+
 Bot v1.0
 Created with Telethon
 Simple user & admin panel"""
-        await event.edit(about_text, buttons=InlineKeyboardMarkupClass(back_keyboard))
+        await event.edit(about_text, buttons=get_back_keyboard())
     
     elif callback_data == b'user_ban':
-        await event.edit('🚫 User ban ho gaya', buttons=InlineKeyboardMarkupClass(back_keyboard))
+        await event.edit('🚫 User ban ho gaya', buttons=get_back_keyboard())
     
     elif callback_data == b'user_unban':
-        await event.edit('✅ User unban ho gaya', buttons=InlineKeyboardMarkupClass(back_keyboard))
+        await event.edit('✅ User unban ho gaya', buttons=get_back_keyboard())
     
     elif callback_data == b'user_info':
         info_text = """ℹ️ USER INFO
-        
+
 ID: 12345
 Joined: 2025-01-01
 Messages: 50
 Status: Active"""
-        await event.edit(info_text, buttons=InlineKeyboardMarkupClass(users_detail_keyboard))
+        await event.edit(info_text, buttons=get_users_detail_keyboard())
     
     elif callback_data == b'owner_users_back':
-        await event.edit('👥 USERS MANAGEMENT\n\n📊 Total Users: 100\n🚫 Banned Users: 5\n✅ Active Users: 95', buttons=InlineKeyboardMarkupClass(users_detail_keyboard))
+        await event.edit('👥 USERS MANAGEMENT\n\n📊 Total Users: 100\n🚫 Banned Users: 5\n✅ Active Users: 95', buttons=get_users_detail_keyboard())
     
     elif callback_data == b'setting_start_text':
-        await event.edit('✍️ Start text customize karo\n\n(Coming soon...)', buttons=InlineKeyboardMarkupClass(settings_keyboard))
+        await event.edit('✍️ Start text customize karo\n\n(Coming soon...)', buttons=get_settings_keyboard())
     
     elif callback_data == b'setting_sudo_force':
-        await event.edit('🔄 Sudo-Force settings\n\n(Coming soon...)', buttons=InlineKeyboardMarkupClass(settings_keyboard))
+        await event.edit('🔄 Sudo-Force settings\n\n(Coming soon...)', buttons=get_settings_keyboard())
     
     elif callback_data == b'setting_handle_group':
-        await event.edit('👥 Group handling settings\n\n(Coming soon...)', buttons=InlineKeyboardMarkupClass(settings_keyboard))
+        await event.edit('👥 Group handling settings\n\n(Coming soon...)', buttons=get_settings_keyboard())
     
     elif callback_data == b'settings_back':
-        await event.edit('⚙️ SETTINGS', buttons=InlineKeyboardMarkupClass(settings_keyboard))
+        await event.edit('⚙️ SETTINGS', buttons=get_settings_keyboard())
     
     elif callback_data == b'back_to_main':
         if is_owner:
-            await event.edit('🔐 OWNER PANEL\n\nKya karna hai?', buttons=InlineKeyboardMarkupClass(owner_main_keyboard))
+            await event.edit('🔐 OWNER PANEL\n\nKya karna hai?', buttons=get_owner_main_keyboard())
         else:
-            await event.edit(f'👋 Welcome {sender_obj.first_name}!\n\nKya karna hai?', buttons=InlineKeyboardMarkupClass(user_main_keyboard))
+            await event.edit(f'👋 Welcome {sender_obj.first_name}!\n\nKya karna hai?', buttons=get_user_main_keyboard())
 
 @client.on(events.NewMessage(pattern='/hello'))
 async def hello_handler(event):
