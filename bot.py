@@ -187,7 +187,13 @@ Telethon Library
 Admin & User Management System"""
         await event.edit(about_text, buttons=[[Button.inline('⬅️ Back', b'user_back')]])
     
-    elif data == b'user_ban':
+    elif data == b'user_ban' or data.startswith(b'ban_page_'):
+        # Get page number
+        if data == b'user_ban':
+            page = 0
+        else:
+            page = int(data.decode().split('_')[2])
+        
         all_users = get_all_users()
         active_users = [u for u in all_users.values() if not u.get('banned', False) and u['user_id'] != owner_id]
         
@@ -195,16 +201,40 @@ Admin & User Management System"""
             await event.edit('⚠️ Koi active user nahi hai ban karne ke liye!', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
             return
         
+        # Pagination - 6 users per page
+        per_page = 6
+        total_pages = (len(active_users) + per_page - 1) // per_page
+        
+        start_idx = page * per_page
+        end_idx = min(start_idx + per_page, len(active_users))
+        page_users = active_users[start_idx:end_idx]
+        
         buttons = []
-        for user in active_users[:10]:  # First 10 users
+        for user in page_users:
             btn_text = f"🚫 {user['first_name'][:15]} (@{user['username'][:15]})"
             btn_data = f"action_ban_{user['user_id']}".encode()
             buttons.append([Button.inline(btn_text, btn_data)])
         
+        # Navigation buttons
+        nav_buttons = []
+        if page > 0:
+            nav_buttons.append(Button.inline('◀️ Prev', f'ban_page_{page - 1}'.encode()))
+        nav_buttons.append(Button.inline(f'📄 {page + 1}/{total_pages}', b'page_info'))
+        if page < total_pages - 1:
+            nav_buttons.append(Button.inline('Next ▶️', f'ban_page_{page + 1}'.encode()))
+        
+        buttons.append(nav_buttons)
         buttons.append([Button.inline('⬅️ Back', b'owner_users')])
+        
         await event.edit('🚫 BAN USER\n\n━━━━━━━━━━━━━━━━\nUser select karo:', buttons=buttons)
     
-    elif data == b'user_unban':
+    elif data == b'user_unban' or data.startswith(b'unban_page_'):
+        # Get page number
+        if data == b'user_unban':
+            page = 0
+        else:
+            page = int(data.decode().split('_')[2])
+        
         all_users = get_all_users()
         banned_users = [u for u in all_users.values() if u.get('banned', False)]
         
@@ -212,30 +242,72 @@ Admin & User Management System"""
             await event.edit('⚠️ Koi banned user nahi hai!', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
             return
         
+        # Pagination - 6 users per page
+        per_page = 6
+        total_pages = (len(banned_users) + per_page - 1) // per_page
+        
+        start_idx = page * per_page
+        end_idx = min(start_idx + per_page, len(banned_users))
+        page_users = banned_users[start_idx:end_idx]
+        
         buttons = []
-        for user in banned_users[:10]:  # First 10 users
+        for user in page_users:
             btn_text = f"✅ {user['first_name'][:15]} (@{user['username'][:15]})"
             btn_data = f"action_unban_{user['user_id']}".encode()
             buttons.append([Button.inline(btn_text, btn_data)])
         
+        # Navigation buttons
+        nav_buttons = []
+        if page > 0:
+            nav_buttons.append(Button.inline('◀️ Prev', f'unban_page_{page - 1}'.encode()))
+        nav_buttons.append(Button.inline(f'📄 {page + 1}/{total_pages}', b'page_info'))
+        if page < total_pages - 1:
+            nav_buttons.append(Button.inline('Next ▶️', f'unban_page_{page + 1}'.encode()))
+        
+        buttons.append(nav_buttons)
         buttons.append([Button.inline('⬅️ Back', b'owner_users')])
+        
         await event.edit('✅ UNBAN USER\n\n━━━━━━━━━━━━━━━━\nUser select karo:', buttons=buttons)
     
-    elif data == b'user_info':
+    elif data == b'user_info' or data.startswith(b'info_page_'):
+        # Get page number
+        if data == b'user_info':
+            page = 0
+        else:
+            page = int(data.decode().split('_')[2])
+        
         all_users = get_all_users()
         if not all_users:
             await event.edit('⚠️ Koi user nahi hai database mein!', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
             return
         
+        # Pagination - 6 users per page
+        per_page = 6
+        user_list = list(all_users.values())
+        total_pages = (len(user_list) + per_page - 1) // per_page
+        
+        start_idx = page * per_page
+        end_idx = min(start_idx + per_page, len(user_list))
+        page_users = user_list[start_idx:end_idx]
+        
         buttons = []
-        user_list = list(all_users.values())[:10]  # First 10 users
-        for user in user_list:
+        for user in page_users:
             status = '✅' if not user.get('banned', False) else '🚫'
             btn_text = f"{status} {user['first_name'][:15]} (@{user['username'][:15]})"
             btn_data = f"action_info_{user['user_id']}".encode()
             buttons.append([Button.inline(btn_text, btn_data)])
         
+        # Navigation buttons
+        nav_buttons = []
+        if page > 0:
+            nav_buttons.append(Button.inline('◀️ Prev', f'info_page_{page - 1}'.encode()))
+        nav_buttons.append(Button.inline(f'📄 {page + 1}/{total_pages}', b'page_info'))
+        if page < total_pages - 1:
+            nav_buttons.append(Button.inline('Next ▶️', f'info_page_{page + 1}'.encode()))
+        
+        buttons.append(nav_buttons)
         buttons.append([Button.inline('⬅️ Back', b'owner_users')])
+        
         await event.edit('ℹ️ USER INFO\n\n━━━━━━━━━━━━━━━━\nUser select karo:', buttons=buttons)
     
     elif data.startswith(b'action_ban_'):
@@ -332,6 +404,10 @@ Manage your bot:
 ━━━━━━━━━━━━━━━━"""
         await event.edit(owner_text, buttons=buttons)
     
+    elif data == b'page_info':
+        # Just ignore - this is the page number display button
+        await event.answer('📄 Page Information', alert=False)
+    
     elif data == b'user_back':
         buttons = [
             [Button.inline('🛠️ Tools', b'user_tools')],
@@ -369,25 +445,48 @@ async def ban_command_handler(event):
         await event.respond('❌ Sirf owner hi ban kar sakta hai!')
         raise events.StopPropagation
     
-    args = event.text.split()
-    if len(args) < 2:
-        await event.respond('⚠️ Usage: /ban <user_id>\n\nExample: /ban 123456789')
+    # Check if replying to a message
+    if event.is_reply:
+        replied_msg = await event.get_reply_message()
+        target_user_id = replied_msg.sender_id
+    else:
+        args = event.text.split()
+        if len(args) < 2:
+            await event.respond('⚠️ Usage: /ban <user_id/username>\n\nExample: /ban 123456789 ya /ban @username\n\nYa kisi ke message ko reply karke /ban likhiye')
+            raise events.StopPropagation
+        
+        # Check if username or user_id
+        target_str = args[1].replace('@', '')
+        all_users = get_all_users()
+        target_user_id = None
+        
+        # Try to find by user_id first
+        try:
+            uid = int(target_str)
+            if get_user(uid):
+                target_user_id = uid
+        except ValueError:
+            # Search by username
+            for u in all_users.values():
+                if u['username'].lower() == target_str.lower():
+                    target_user_id = u['user_id']
+                    break
+        
+        if not target_user_id:
+            await event.respond(f'❌ User "{args[1]}" database mein nahi mila!')
+            raise events.StopPropagation
+    
+    user = get_user(target_user_id)
+    if not user:
+        await event.respond(f'❌ User database mein nahi mila!')
         raise events.StopPropagation
     
-    try:
-        target_user_id = int(args[1])
-        user = get_user(target_user_id)
-        
-        if not user:
-            await event.respond(f'❌ User ID {target_user_id} database mein nahi mila!')
-            raise events.StopPropagation
-        
-        if user['banned']:
-            await event.respond(f'⚠️ User {user["first_name"]} (@{user["username"]}) pehle se banned hai!')
-            raise events.StopPropagation
-        
-        ban_user(target_user_id)
-        ban_text = f"""🚫 USER BANNED
+    if user['banned']:
+        await event.respond(f'⚠️ User {user["first_name"]} (@{user["username"]}) pehle se banned hai!')
+        raise events.StopPropagation
+    
+    ban_user(target_user_id)
+    ban_text = f"""🚫 USER BANNED
 
 ━━━━━━━━━━━━━━━━
 👤 User Details:
@@ -397,10 +496,7 @@ async def ban_command_handler(event):
   • Status: 🚫 Banned
 
 ━━━━━━━━━━━━━━━━"""
-        await event.respond(ban_text)
-        
-    except ValueError:
-        await event.respond('❌ Invalid user ID! Sirf numbers daliye.')
+    await event.respond(ban_text)
     
     raise events.StopPropagation
 
@@ -412,16 +508,15 @@ async def unban_command_handler(event):
         raise events.StopPropagation
     
     args = event.text.split()
-    if len(args) < 2:
-        await event.respond('⚠️ Usage: /unban <user_id>\n\nExample: /unban 123456789')
-        raise events.StopPropagation
     
-    try:
-        target_user_id = int(args[1])
+    # Check if replying to a message
+    if event.is_reply:
+        replied_msg = await event.get_reply_message()
+        target_user_id = replied_msg.sender_id
         user = get_user(target_user_id)
         
         if not user:
-            await event.respond(f'❌ User ID {target_user_id} database mein nahi mila!')
+            await event.respond(f'❌ User database mein nahi mila!')
             raise events.StopPropagation
         
         if not user['banned']:
@@ -440,9 +535,90 @@ async def unban_command_handler(event):
 
 ━━━━━━━━━━━━━━━━"""
         await event.respond(unban_text)
+        raise events.StopPropagation
+    
+    # Show list if no argument provided
+    if len(args) < 2:
+        all_users = get_all_users()
+        banned_users = [u for u in all_users.values() if u.get('banned', False)]
         
+        if not banned_users:
+            await event.respond('⚠️ Koi banned user nahi hai!')
+            raise events.StopPropagation
+        
+        # Pagination - 6 users per page
+        page = 0
+        per_page = 6
+        total_pages = (len(banned_users) + per_page - 1) // per_page
+        
+        start_idx = page * per_page
+        end_idx = min(start_idx + per_page, len(banned_users))
+        page_users = banned_users[start_idx:end_idx]
+        
+        list_text = f"""✅ BANNED USERS LIST
+
+━━━━━━━━━━━━━━━━
+📄 Page {page + 1}/{total_pages} | Total: {len(banned_users)}
+
+"""
+        for i, user in enumerate(page_users, start=start_idx + 1):
+            list_text += f"{i}. {user['first_name']} (@{user['username']})\n   ID: {user['user_id']}\n\n"
+        
+        list_text += "━━━━━━━━━━━━━━━━\n"
+        list_text += "Usage: /unban <user_id/username>\nYa message ko reply karke /unban"
+        
+        # Add pagination buttons
+        buttons = []
+        nav_buttons = []
+        if page > 0:
+            nav_buttons.append(Button.inline('◀️ Previous', f'unban_page_{page - 1}'.encode()))
+        if page < total_pages - 1:
+            nav_buttons.append(Button.inline('Next ▶️', f'unban_page_{page + 1}'.encode()))
+        
+        if nav_buttons:
+            buttons.append(nav_buttons)
+        
+        await event.respond(list_text, buttons=buttons if buttons else None)
+        raise events.StopPropagation
+    
+    # Unban specific user by ID or username
+    target_str = args[1].replace('@', '')
+    all_users = get_all_users()
+    target_user_id = None
+    
+    # Try to find by user_id first
+    try:
+        uid = int(target_str)
+        if get_user(uid):
+            target_user_id = uid
     except ValueError:
-        await event.respond('❌ Invalid user ID! Sirf numbers daliye.')
+        # Search by username
+        for u in all_users.values():
+            if u['username'].lower() == target_str.lower():
+                target_user_id = u['user_id']
+                break
+    
+    if not target_user_id:
+        await event.respond(f'❌ User "{args[1]}" database mein nahi mila!')
+        raise events.StopPropagation
+    
+    user = get_user(target_user_id)
+    if not user['banned']:
+        await event.respond(f'⚠️ User {user["first_name"]} (@{user["username"]}) banned nahi hai!')
+        raise events.StopPropagation
+    
+    unban_user(target_user_id)
+    unban_text = f"""✅ USER UNBANNED
+
+━━━━━━━━━━━━━━━━
+👤 User Details:
+  • Name: {user['first_name']}
+  • Username: @{user['username']}
+  • ID: {target_user_id}
+  • Status: ✅ Active
+
+━━━━━━━━━━━━━━━━"""
+    await event.respond(unban_text)
     
     raise events.StopPropagation
 
@@ -453,23 +629,46 @@ async def info_command_handler(event):
         await event.respond('❌ Sirf owner hi user info dekh sakta hai!')
         raise events.StopPropagation
     
-    args = event.text.split()
-    if len(args) < 2:
-        await event.respond('⚠️ Usage: /info <user_id>\n\nExample: /info 123456789')
-        raise events.StopPropagation
-    
-    try:
-        target_user_id = int(args[1])
-        user = get_user(target_user_id)
-        
-        if not user:
-            await event.respond(f'❌ User ID {target_user_id} database mein nahi mila!')
+    # Check if replying to a message
+    if event.is_reply:
+        replied_msg = await event.get_reply_message()
+        target_user_id = replied_msg.sender_id
+    else:
+        args = event.text.split()
+        if len(args) < 2:
+            await event.respond('⚠️ Usage: /info <user_id/username>\n\nExample: /info 123456789 ya /info @username\n\nYa kisi ke message ko reply karke /info likhiye')
             raise events.StopPropagation
         
-        status_emoji = '✅' if not user['banned'] else '🚫'
-        status_text = 'Active' if not user['banned'] else 'Banned'
+        # Check if username or user_id
+        target_str = args[1].replace('@', '')
+        all_users = get_all_users()
+        target_user_id = None
         
-        info_text = f"""ℹ️ USER INFORMATION
+        # Try to find by user_id first
+        try:
+            uid = int(target_str)
+            if get_user(uid):
+                target_user_id = uid
+        except ValueError:
+            # Search by username
+            for u in all_users.values():
+                if u['username'].lower() == target_str.lower():
+                    target_user_id = u['user_id']
+                    break
+        
+        if not target_user_id:
+            await event.respond(f'❌ User "{args[1]}" database mein nahi mila!')
+            raise events.StopPropagation
+    
+    user = get_user(target_user_id)
+    if not user:
+        await event.respond(f'❌ User database mein nahi mila!')
+        raise events.StopPropagation
+    
+    status_emoji = '✅' if not user['banned'] else '🚫'
+    status_text = 'Active' if not user['banned'] else 'Banned'
+    
+    info_text = f"""ℹ️ USER INFORMATION
 
 ━━━━━━━━━━━━━━━━
 👤 Profile:
@@ -483,17 +682,14 @@ async def info_command_handler(event):
   • Status: {status_emoji} {status_text}
 
 ━━━━━━━━━━━━━━━━"""
-        
-        buttons = []
-        if user['banned']:
-            buttons.append([Button.inline('✅ Unban User', f'action_unban_{target_user_id}'.encode())])
-        else:
-            buttons.append([Button.inline('🚫 Ban User', f'action_ban_{target_user_id}'.encode())])
-        
-        await event.respond(info_text, buttons=buttons)
-        
-    except ValueError:
-        await event.respond('❌ Invalid user ID! Sirf numbers daliye.')
+    
+    buttons = []
+    if user['banned']:
+        buttons.append([Button.inline('✅ Unban User', f'action_unban_{target_user_id}'.encode())])
+    else:
+        buttons.append([Button.inline('🚫 Ban User', f'action_ban_{target_user_id}'.encode())])
+    
+    await event.respond(info_text, buttons=buttons)
     
     raise events.StopPropagation
 
