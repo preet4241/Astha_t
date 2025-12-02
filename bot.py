@@ -49,20 +49,42 @@ async def callback_handler(event):
     
     elif data == b'owner_users':
         all_users = get_all_users()
-        users_list = "\n".join([f"• {u['first_name']} - {'🚫' if u.get('banned') else '✅'}" for u in list(all_users.values())[:10]]) or "No users"
+        stats = get_stats()
         buttons = [
             [Button.inline('🚫 Ban', b'user_ban'), Button.inline('✅ Unban', b'user_unban')],
             [Button.inline('ℹ️ Info', b'user_info')],
             [Button.inline('⬅️ Back', b'owner_back')],
         ]
-        await event.edit(f'👥 USERS\n\n{users_list}\n\nTotal: {len(all_users)}', buttons=buttons)
+        users_text = f"""👥 USERS MANAGEMENT
+
+━━━━━━━━━━━━━━━━
+📊 Statistics:
+  • Total Users: {stats['total_users']}
+  • Active Users: {stats['active_users']}
+  • Banned Users: {stats['banned_users']}
+━━━━━━━━━━━━━━━━
+
+👇 Choose an option below"""
+        await event.edit(users_text, buttons=buttons)
     
     elif data == b'owner_broadcast':
         buttons = [
             [Button.inline('📝 Send Message', b'broadcast_send')],
             [Button.inline('⬅️ Back', b'owner_back')],
         ]
-        await event.edit('📢 BROADCAST\n\nSend messages to all users', buttons=buttons)
+        broadcast_text = """📢 BROADCAST SYSTEM
+
+━━━━━━━━━━━━━━━━
+Send messages to all active users with custom placeholders:
+
+• {first_name} - User's first name
+• {username} - User's username  
+• {user_id} - User's ID
+
+Example:
+"Hello {first_name}! Welcome to our bot"
+━━━━━━━━━━━━━━━━"""
+        await event.edit(broadcast_text, buttons=buttons)
     
     elif data == b'broadcast_send':
         broadcast_temp[sender.id] = True
@@ -72,17 +94,30 @@ async def callback_handler(event):
     elif data == b'owner_status':
         stats = get_stats()
         current_time = datetime.datetime.now().strftime("%H:%M:%S")
-        status_text = f"""📊 STATUS
+        current_date = datetime.datetime.now().strftime("%d-%m-%Y")
+        status_text = f"""📊 BOT STATUS
 
-✅ Bot: Online
-⏰ Time: {current_time}
+━━━━━━━━━━━━━━━━
+🤖 System Status:
+  ✅ Bot: Online
+  ✅ Database: Connected
+  
+⏰ Time Information:
+  📅 Date: {current_date}
+  🕐 Time: {current_time}
 
-👥 Users: {stats['total_users']}
-✅ Active: {stats['active_users']}
-🚫 Banned: {stats['banned_users']}
+━━━━━━━━━━━━━━━━
+👥 User Statistics:
+  • Total: {stats['total_users']}
+  • Active: {stats['active_users']} ✅
+  • Banned: {stats['banned_users']} 🚫
 
-📨 Messages: {stats['total_messages']}
-💾 Database: Connected"""
+━━━━━━━━━━━━━━━━
+📨 Message Stats:
+  • Total Messages: {stats['total_messages']}
+  • Today: [Tracking]
+
+━━━━━━━━━━━━━━━━"""
         buttons = [[Button.inline('⬅️ Back', b'owner_back')]]
         await event.edit(status_text, buttons=buttons)
     
@@ -92,7 +127,17 @@ async def callback_handler(event):
             [Button.inline('🔄 Sudo Force', b'setting_sudo_force'), Button.inline('👥 Groups', b'setting_groups')],
             [Button.inline('⬅️ Back', b'owner_back')],
         ]
-        await event.edit('⚙️ SETTINGS', buttons=buttons)
+        settings_text = """⚙️ BOT SETTINGS
+
+━━━━━━━━━━━━━━━━
+Configure your bot behavior and features:
+
+✍️ Start Text - Customize welcome message
+🔄 Sudo Force - Enable/Disable admin features
+👥 Groups - Handle group messages
+
+━━━━━━━━━━━━━━━━"""
+        await event.edit(settings_text, buttons=buttons)
     
     elif data == b'setting_start_text':
         await event.edit('✍️ Start Text: [Placeholder]\n\n(Coming soon...)', buttons=[[Button.inline('⬅️ Back', b'owner_settings')]])
@@ -109,12 +154,20 @@ async def callback_handler(event):
     elif data == b'user_profile':
         user = get_user(sender.id)
         if user:
-            profile_text = f"""👤 PROFILE
+            profile_text = f"""👤 YOUR PROFILE
 
-Name: {user['first_name']}
-Username: @{user['username']}
-ID: {user['user_id']}
-Messages: {user['messages']}"""
+━━━━━━━━━━━━━━━━
+📋 Profile Information:
+  • Name: {user['first_name']}
+  • Username: @{user['username']}
+  • ID: {user['user_id']}
+
+📊 Activity:
+  • Messages Sent: {user['messages']}
+  • Joined: {user['joined']}
+  • Status: ✅ Active
+
+━━━━━━━━━━━━━━━━"""
             await event.edit(profile_text, buttons=[[Button.inline('⬅️ Back', b'user_back')]])
     
     elif data == b'user_help':
@@ -149,7 +202,19 @@ Admin & User Management System"""
             [Button.inline('👥 Users', b'owner_users'), Button.inline('📢 Broadcast', b'owner_broadcast')],
             [Button.inline('📊 Status', b'owner_status'), Button.inline('⚙️ Settings', b'owner_settings')],
         ]
-        await event.edit('🔐 OWNER PANEL', buttons=buttons)
+        owner_text = """🔐 OWNER PANEL
+
+━━━━━━━━━━━━━━━━
+Welcome to the owner control panel!
+
+Manage your bot:
+👥 Users - User management
+📢 Broadcast - Send messages
+📊 Status - View statistics
+⚙️ Settings - Configure bot
+
+━━━━━━━━━━━━━━━━"""
+        await event.edit(owner_text, buttons=buttons)
     
     elif data == b'user_back':
         buttons = [
@@ -157,7 +222,17 @@ Admin & User Management System"""
             [Button.inline('👤 Profile', b'user_profile'), Button.inline('❓ Help', b'user_help')],
             [Button.inline('ℹ️ About', b'user_about')],
         ]
-        await event.edit('👋 Menu', buttons=buttons)
+        user_text = """👋 USER MENU
+
+━━━━━━━━━━━━━━━━
+Explore features:
+
+👤 Profile - View your profile
+❓ Help - Get help
+ℹ️ About - About this bot
+
+━━━━━━━━━━━━━━━━"""
+        await event.edit(user_text, buttons=buttons)
 
 @client.on(events.NewMessage(pattern='/hello'))
 async def hello_handler(event):
