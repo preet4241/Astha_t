@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from telethon import TelegramClient, events, Button
 import os
 from datetime import datetime, timedelta
