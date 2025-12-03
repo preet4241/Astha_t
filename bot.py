@@ -104,7 +104,7 @@ async def handle_channel_addition(event, sender):
             }
             
             buttons = [[Button.inline('❌ Cancel', b'setting_sub_force')]]
-            msg = f"""✅ Channel Details Fetched!
+            msg = f""" Channel Details Fetched!
 
 📌 Channel: {channel_title}
 🔗 Link: {channel_link}
