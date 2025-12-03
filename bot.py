@@ -121,10 +121,11 @@ async def callback_handler(event):
     elif data == b'group_start_text':
         buttons = [
             [Button.inline('Add', b'group_start_text_add'), Button.inline('Remove', b'group_start_text_remove'), Button.inline('Default', b'group_start_text_default')],
-            [Button.inline('Msgs', b'group_start_text_msgs'), Button.inline('Setting', b'group_start_text_setting')],
             [Button.inline('Back', b'owner_groups')],
         ]
-        await event.edit('GROUP START TEXT\n\nManage group welcome message:', buttons=buttons)
+        current_text = get_setting('group_start_text', 'Bot added to group!')
+        text = f"GROUP START TEXT\n\nCurrent: {current_text}\n\nManage welcome message:"
+        await event.edit(text, buttons=buttons)
     
     elif data == b'group_start_text_add':
         start_text_temp[sender.id] = 'group'
@@ -139,12 +140,6 @@ async def callback_handler(event):
     elif data == b'group_start_text_default':
         set_setting('group_start_text', 'Bot added to group!')
         await event.edit('Group start text reset to default!', buttons=[[Button.inline('Back', b'group_start_text')]])
-    
-    elif data == b'group_start_text_msgs':
-        await event.edit('Messages: Coming soon...', buttons=[[Button.inline('Back', b'group_start_text')]])
-    
-    elif data == b'group_start_text_setting':
-        await event.edit('Settings: Coming soon...', buttons=[[Button.inline('Back', b'group_start_text')]])
     
     elif data == b'group_add':
         group_action_temp[sender.id] = 'add'
