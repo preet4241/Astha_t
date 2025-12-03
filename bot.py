@@ -112,11 +112,39 @@ async def callback_handler(event):
         groups = get_all_groups()
         buttons = [
             [Button.inline('Add', b'group_add'), Button.inline('Remove', b'group_remove')],
-            [Button.inline('List', b'group_list_page_1')],
+            [Button.inline('List', b'group_list_page_1'), Button.inline('Start Text', b'group_start_text')],
             [Button.inline('Back', b'owner_back')],
         ]
         group_text = f"GROUPS\n\nConnected: {len(groups)}\n\nWhat do you want to do?"
         await event.edit(group_text, buttons=buttons)
+    
+    elif data == b'group_start_text':
+        buttons = [
+            [Button.inline('Add', b'group_start_text_add'), Button.inline('Remove', b'group_start_text_remove'), Button.inline('Default', b'group_start_text_default')],
+            [Button.inline('Msgs', b'group_start_text_msgs'), Button.inline('Setting', b'group_start_text_setting')],
+            [Button.inline('Back', b'owner_groups')],
+        ]
+        await event.edit('GROUP START TEXT\n\nManage group welcome message:', buttons=buttons)
+    
+    elif data == b'group_start_text_add':
+        start_text_temp[sender.id] = 'group'
+        buttons = [[Button.inline('Cancel', b'group_start_text')]]
+        help_text = "Type new group start text:\n\nPlaceholders: {greeting}, {date}, {time}, {bot_name}"
+        await event.edit(help_text, buttons=buttons)
+    
+    elif data == b'group_start_text_remove':
+        set_setting('group_start_text', '')
+        await event.edit('Group start text removed!', buttons=[[Button.inline('Back', b'group_start_text')]])
+    
+    elif data == b'group_start_text_default':
+        set_setting('group_start_text', 'Bot added to group!')
+        await event.edit('Group start text reset to default!', buttons=[[Button.inline('Back', b'group_start_text')]])
+    
+    elif data == b'group_start_text_msgs':
+        await event.edit('Messages: Coming soon...', buttons=[[Button.inline('Back', b'group_start_text')]])
+    
+    elif data == b'group_start_text_setting':
+        await event.edit('Settings: Coming soon...', buttons=[[Button.inline('Back', b'group_start_text')]])
     
     elif data == b'group_add':
         group_action_temp[sender.id] = 'add'
@@ -535,6 +563,12 @@ async def message_handler(event):
             preview = format_text(message, sender, get_stats())
             buttons = [[Button.inline('Back', b'start_text_user')]]
             await event.respond(f"User start text saved!\n\nPreview:\n{preview}", buttons=buttons)
+        elif text_type == 'group':
+            set_setting('group_start_text', message)
+            start_text_temp[sender.id] = None
+            preview = format_text(message, sender, get_stats())
+            buttons = [[Button.inline('Back', b'group_start_text')]]
+            await event.respond(f"Group start text saved!\n\nPreview:\n{preview}", buttons=buttons)
         
         raise events.StopPropagation
     
@@ -574,6 +608,10 @@ async def chat_action_handler(event):
                 
                 if not group_exists(grp_id):
                     add_group(grp_id, grp_name, grp_title)
+                    msg_text = get_setting('group_start_text', 'Bot added to group!')
+                    msg_text = format_text(msg_text, await event.get_sender(), get_stats())
+                    buttons = [[Button.inline('Add to List', f'quick_add_group_{grp_id}'.encode())]]
+                    await event.respond(msg_text, buttons=buttons)
         except Exception as e:
             print(f"Error in auto-detect group: {e}")
     raise events.StopPropagation
