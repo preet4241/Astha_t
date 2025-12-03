@@ -4,7 +4,8 @@ import datetime
 from users_db import (
     add_user, get_user, ban_user, unban_user, 
     get_all_users, get_stats, increment_messages,
-    set_setting, get_setting
+    set_setting, get_setting, add_channel, remove_channel,
+    get_all_channels, channel_exists
 )
 
 api_id = int(os.getenv('API_ID', '22880380'))
@@ -16,6 +17,8 @@ client = TelegramClient('bot', api_id, api_hash).start(bot_token=bot_token)
 
 broadcast_temp = {}
 start_text_temp = {}
+channel_action_temp = {}
+channel_page_temp = {}
 
 def get_greeting():
     """Get greeting based on current time"""
@@ -201,7 +204,7 @@ Send messages to all active users with custom placeholders:
     elif data == b'owner_settings':
         buttons = [
             [Button.inline('✍️ Start Text', b'setting_start_text')],
-            [Button.inline('🔄 Sudo Force', b'setting_sudo_force'), Button.inline('👥 Groups', b'setting_groups')],
+            [Button.inline('📱 Sub-Force', b'setting_sub_force'), Button.inline('👥 Groups', b'setting_groups')],
             [Button.inline('⬅️ Back', b'owner_back')],
         ]
         settings_text = """⚙️ BOT SETTINGS
@@ -210,7 +213,7 @@ Send messages to all active users with custom placeholders:
 Configure your bot behavior and features:
 
 ✍️ Start Text - Customize welcome message
-🔄 Sudo Force - Enable/Disable admin features
+📱 Sub-Force - Manage required channels
 👥 Groups - Handle group messages
 
 ━━━━━━━━━━━━━━━━"""
@@ -309,8 +312,101 @@ Messages: {user_messages}"""
         set_setting('user_start_text', get_default_user_text())
         await event.edit('👤 Reset to default User start text\n\n✅ Confirmed', buttons=[[Button.inline('⬅️ Back', b'start_text_user')]])
     
-    elif data == b'setting_sudo_force':
-        await event.edit('🔄 Sudo Force: Off\n\n(Coming soon...)', buttons=[[Button.inline('⬅️ Back', b'owner_settings')]])
+    elif data == b'setting_sub_force':
+        channels = get_all_channels()
+        buttons = [
+            [Button.inline('➕ Add', b'sub_force_add'), Button.inline('➖ Remove', b'sub_force_remove')],
+            [Button.inline('📋 List', b'sub_force_list_page_1')],
+            [Button.inline('⬅️ Back', b'owner_settings')],
+        ]
+        sub_text = f"""📱 SUB-FORCE (Channel Subscription Enforcement)
+
+━━━━━━━━━━━━━━━━
+📊 Active Channels: {len(channels)}
+
+Connected channels that users MUST join to use the bot.
+
+What would you like to do?"""
+        await event.edit(sub_text, buttons=buttons)
+    
+    elif data == b'sub_force_add':
+        channel_action_temp[sender.id] = 'add'
+        buttons = [[Button.inline('❌ Cancel', b'setting_sub_force')]]
+        await event.edit("""➕ ADD CHANNEL
+
+Type channel username/link:
+(Example: @mychannel or https://t.me/mychannel)""", buttons=buttons)
+    
+    elif data == b'sub_force_remove':
+        channels = get_all_channels()
+        if not channels:
+            await event.edit('📭 No channels to remove!\n\nAdd channels first.', buttons=[[Button.inline('⬅️ Back', b'setting_sub_force')]])
+        else:
+            channel_page_temp[sender.id] = 1
+            total_pages = (len(channels) + 5) // 6
+            start_idx = 0
+            end_idx = min(6, len(channels))
+            buttons = []
+            for ch in channels[start_idx:end_idx]:
+                buttons.append([Button.inline(f'❌ {ch["username"]}', f'remove_ch_{ch["channel_id"]}')]) 
+            if total_pages > 1:
+                buttons.append([Button.inline(f'➡️ Next (1/{total_pages})', b'sub_force_remove_next')])
+            buttons.append([Button.inline('⬅️ Back', b'setting_sub_force')])
+            await event.edit('➖ REMOVE CHANNEL\n\nSelect channel to remove:', buttons=buttons)
+    
+    elif data == b'sub_force_remove_next':
+        channels = get_all_channels()
+        page = channel_page_temp.get(sender.id, 1) + 1
+        total_pages = (len(channels) + 5) // 6
+        if page > total_pages:
+            page = 1
+        channel_page_temp[sender.id] = page
+        start_idx = (page - 1) * 6
+        end_idx = min(start_idx + 6, len(channels))
+        buttons = []
+        for ch in channels[start_idx:end_idx]:
+            buttons.append([Button.inline(f'❌ {ch["username"]}', f'remove_ch_{ch["channel_id"]}')])
+        if total_pages > 1:
+            buttons.append([Button.inline(f'➡️ Next ({page}/{total_pages})', b'sub_force_remove_next')])
+        buttons.append([Button.inline('⬅️ Back', b'setting_sub_force')])
+        await event.edit('➖ REMOVE CHANNEL\n\nSelect channel to remove:', buttons=buttons)
+    
+    elif data.startswith(b'remove_ch_'):
+        channel_id = int(data.split(b'_')[2])
+        channels = get_all_channels()
+        for ch in channels:
+            if ch['channel_id'] == channel_id:
+                remove_channel(ch['username'])
+                await event.edit(f'✅ Channel {ch["username"]} removed!', buttons=[[Button.inline('⬅️ Back', b'setting_sub_force')]])
+                break
+    
+    elif data == b'sub_force_list_page_1' or data.startswith(b'sub_force_list_page_'):
+        channels = get_all_channels()
+        if not channels:
+            await event.edit('📭 No channels added yet!', buttons=[[Button.inline('⬅️ Back', b'setting_sub_force')]])
+        else:
+            if data.startswith(b'sub_force_list_page_'):
+                page = int(data.split(b'_')[3])
+            else:
+                page = 1
+            total_pages = (len(channels) + 5) // 6
+            start_idx = (page - 1) * 6
+            end_idx = min(start_idx + 6, len(channels))
+            
+            text = f"📋 CHANNELS LIST (Page {page}/{total_pages})\n\n━━━━━━━━━━━━━━━━\n"
+            for i, ch in enumerate(channels[start_idx:end_idx], 1):
+                added = ch['added_date'][:10] if ch['added_date'] else 'Unknown'
+                text += f"{i}. @{ch['username']}\n"
+                text += f"   📌 {ch['title']}\n"
+                text += f"   📅 Added: {added}\n\n"
+            
+            buttons = []
+            if page > 1:
+                buttons.append([Button.inline(f'⬅️ Prev ({page}/{total_pages})', f'sub_force_list_page_{page-1}'.encode())])
+            if page < total_pages:
+                buttons.append([Button.inline(f'➡️ Next ({page}/{total_pages})', f'sub_force_list_page_{page+1}'.encode())])
+            buttons.append([Button.inline('⬅️ Back', b'setting_sub_force')])
+            await event.edit(text, buttons=buttons)
     
     elif data == b'setting_groups':
         await event.edit('👥 Group Handling: Off\n\n(Coming soon...)', buttons=[[Button.inline('⬅️ Back', b'owner_settings')]])
@@ -408,6 +504,20 @@ async def time_handler(event):
 @client.on(events.NewMessage)
 async def message_handler(event):
     sender = await event.get_sender()
+    
+    if channel_action_temp.get(sender.id) == 'add':
+        ch_input = event.text.strip()
+        ch_name = ch_input.replace('@', '').replace('https://t.me/', '')
+        
+        if channel_exists(ch_name):
+            buttons = [[Button.inline('⬅️ Back', b'setting_sub_force')]]
+            await event.respond(f'⚠️ Channel @{ch_name} already added!', buttons=buttons)
+        else:
+            add_channel(ch_name, ch_name)
+            channel_action_temp[sender.id] = None
+            buttons = [[Button.inline('⬅️ Back', b'setting_sub_force')]]
+            await event.respond(f'✅ Channel @{ch_name} added successfully!\n\nUsers must join this channel to use the bot.', buttons=buttons)
+        raise events.StopPropagation
     
     if start_text_temp.get(sender.id):
         text_type = start_text_temp[sender.id]

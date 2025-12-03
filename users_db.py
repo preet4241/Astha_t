@@ -21,6 +21,15 @@ def init_db():
         )
     ''')
     
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS channels (
+            channel_id INTEGER PRIMARY KEY,
+            channel_username TEXT UNIQUE,
+            channel_title TEXT,
+            added_date TEXT
+        )
+    ''')
+    
     conn.commit()
     conn.close()
 
@@ -173,3 +182,67 @@ def get_setting(key, default=''):
     result = cursor.fetchone()
     conn.close()
     return result[0] if result else default
+
+def add_channel(channel_username, channel_title):
+    """Add required channel"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            INSERT INTO channels (channel_username, channel_title, added_date)
+            VALUES (?, ?, ?)
+        ''', (channel_username, channel_title, datetime.now().isoformat()))
+        conn.commit()
+        result = True
+    except sqlite3.IntegrityError:
+        result = False
+    finally:
+        conn.close()
+    
+    return result
+
+def remove_channel(channel_username):
+    """Remove required channel"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('DELETE FROM channels WHERE channel_username = ?', (channel_username,))
+    conn.commit()
+    conn.close()
+    return True
+
+def get_all_channels():
+    """Get all required channels"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT channel_id, channel_username, channel_title, added_date FROM channels ORDER BY added_date DESC')
+    channels = cursor.fetchall()
+    conn.close()
+    
+    result = []
+    for ch in channels:
+        result.append({
+            'channel_id': ch[0],
+            'username': ch[1],
+            'title': ch[2],
+            'added_date': ch[3]
+        })
+    
+    return result
+
+def channel_exists(channel_username):
+    """Check if channel already exists"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT 1 FROM channels WHERE channel_username = ?', (channel_username,))
+    exists = cursor.fetchone() is not None
+    conn.close()
+    
+    return exists
