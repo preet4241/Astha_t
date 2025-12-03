@@ -393,7 +393,14 @@ async def callback_handler(event):
         await event.edit(settings_text, buttons=buttons)
     
     elif data == b'setting_groups':
-        await event.edit('Group Handling: Coming soon...', buttons=[[Button.inline('Back', b'owner_settings')]])
+        groups = get_all_groups()
+        buttons = [
+            [Button.inline('Add', b'group_add'), Button.inline('Remove', b'group_remove')],
+            [Button.inline('List', b'group_list_page_1'), Button.inline('Start Text', b'group_start_text')],
+            [Button.inline('Back', b'owner_settings')],
+        ]
+        group_text = f"GROUPS\n\nConnected: {len(groups)}\n\nWhat do you want to do?"
+        await event.edit(group_text, buttons=buttons)
     
     elif data == b'owner_back':
         buttons = [
