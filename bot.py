@@ -326,14 +326,31 @@ async def message_handler(event):
     sender = await event.get_sender()
     
     if channel_action_temp.get(sender.id) == 'add':
-        ch_input = event.text.strip()
-        ch_name = ch_input.replace('@', '').replace('https://t.me/', '')
+        ch_name = None
+        ch_title = None
+        
+        if event.forward and event.forward.chat:
+            try:
+                channel_entity = await client.get_entity(event.forward.chat)
+                ch_name = channel_entity.username or str(channel_entity.id)
+                ch_title = channel_entity.title
+            except Exception as e:
+                await event.respond(f'Error extracting channel: {str(e)}')
+                return
+        elif event.text:
+            ch_input = event.text.strip()
+            ch_name = ch_input.replace('@', '').replace('https://t.me/', '')
+            ch_title = ch_name
+        
+        if not ch_name:
+            await event.respond('Please forward a message from channel or type channel username.')
+            return
         
         if channel_exists(ch_name):
             buttons = [[Button.inline('Back', b'setting_sub_force')]]
             await event.respond(f'Channel @{ch_name} already added!', buttons=buttons)
         else:
-            add_channel(ch_name, ch_name)
+            add_channel(ch_name, ch_title)
             channel_action_temp[sender.id] = None
             buttons = [[Button.inline('Back', b'setting_sub_force')]]
             await event.respond(f'Channel @{ch_name} added successfully!', buttons=buttons)
