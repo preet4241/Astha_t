@@ -173,7 +173,7 @@ async def callback_handler(event):
     elif data == b'sub_force_add':
         channel_action_temp[sender.id] = 'add'
         buttons = [[Button.inline('Cancel', b'setting_sub_force')]]
-        await event.edit("ADD CHANNEL\n\nType channel username/link:\n(Example: @mychannel)", buttons=buttons)
+        await event.edit("ADD CHANNEL\n\nChoose one method:\n1. Channel ID (number)\n2. Channel username (@username)\n3. Forward message from channel", buttons=buttons)
     
     elif data == b'sub_force_remove':
         channels = get_all_channels()
@@ -339,21 +339,28 @@ async def message_handler(event):
                 return
         elif event.text:
             ch_input = event.text.strip()
-            ch_name = ch_input.replace('@', '').replace('https://t.me/', '')
-            ch_title = ch_name
+            if ch_input.isdigit():
+                ch_name = ch_input
+                ch_title = ch_input
+            elif ch_input.startswith('@'):
+                ch_name = ch_input[1:]
+                ch_title = ch_input[1:]
+            else:
+                await event.respond('Invalid format. Use: ID number, @username, or forward message.')
+                return
         
         if not ch_name:
-            await event.respond('Please forward a message from channel or type channel username.')
+            await event.respond('Send one of: ID, @username, or forward a message.')
             return
         
         if channel_exists(ch_name):
             buttons = [[Button.inline('Back', b'setting_sub_force')]]
-            await event.respond(f'Channel @{ch_name} already added!', buttons=buttons)
+            await event.respond(f'Channel {ch_name} already added!', buttons=buttons)
         else:
             add_channel(ch_name, ch_title)
             channel_action_temp[sender.id] = None
             buttons = [[Button.inline('Back', b'setting_sub_force')]]
-            await event.respond(f'Channel @{ch_name} added successfully!', buttons=buttons)
+            await event.respond(f'Channel {ch_name} added successfully!', buttons=buttons)
         raise events.StopPropagation
     
     if start_text_temp.get(sender.id):
