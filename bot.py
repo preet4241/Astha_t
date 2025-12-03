@@ -47,14 +47,7 @@ async def start_handler(event):
 👥 Users: {stats['total_users']} | ✅ Active: {stats['active_users']}
 
 ━━━━━━━━━━━━━━━━
-Your Control Desk:
-
-👥 Users - User management
-📢 Broadcast - Send messages
-📊 Status - View statistics
-⚙️ Settings - Configure bot
-
-━━━━━━━━━━━━━━━━"""
+Your Control Desk:"""
         await event.respond(owner_text, buttons=buttons)
     else:
         buttons = [
@@ -63,15 +56,8 @@ Your Control Desk:
             [Button.inline('ℹ️ About', b'user_about')],
         ]
         user_text = f"""{greeting} {sender.first_name}! 👋
-
 ━━━━━━━━━━━━━━━━
-What would you like to do?
-
-👤 Profile - View your profile
-❓ Help - Get help
-ℹ️ About - About this bot
-
-━━━━━━━━━━━━━━━━"""
+What would you like to do?"""
         await event.respond(user_text, buttons=buttons)
     
     raise events.StopPropagation
@@ -261,14 +247,7 @@ Admin & User Management System"""
 👥 Users: {stats['total_users']} | ✅ Active: {stats['active_users']}
 
 ━━━━━━━━━━━━━━━━
-Your Control Desk:
-
-👥 Users - User management
-📢 Broadcast - Send messages
-📊 Status - View statistics
-⚙️ Settings - Configure bot
-
-━━━━━━━━━━━━━━━━"""
+Your Control Desk:"""
         await event.edit(owner_text, buttons=buttons)
     
     elif data == b'user_back':
@@ -279,15 +258,8 @@ Your Control Desk:
         ]
         greeting = get_greeting()
         user_text = f"""{greeting} {sender.first_name}! 👋
-
 ━━━━━━━━━━━━━━━━
-What would you like to do?
-
-👤 Profile - View your profile
-❓ Help - Get help
-ℹ️ About - About this bot
-
-━━━━━━━━━━━━━━━━"""
+What would you like to do?"""
         await event.edit(user_text, buttons=buttons)
 
 @client.on(events.NewMessage(pattern='/hello'))
