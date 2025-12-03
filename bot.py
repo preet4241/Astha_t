@@ -62,7 +62,7 @@ Your Control Desk:
             [Button.inline('👤 Profile', b'user_profile'), Button.inline('❓ Help', b'user_help')],
             [Button.inline('ℹ️ About', b'user_about')],
         ]
-        user_text = f"""{greeting} {sender.first_name}! 👋
+        user_text = f"""{greeting}! 👋
 
 🤖 Status: 🟢 Active
 👥 Community: {stats['total_users']} Users
