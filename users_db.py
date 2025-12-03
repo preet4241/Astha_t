@@ -289,3 +289,4 @@ def check_channel_limits():
     cursor.execute('UPDATE channels SET is_active = 0 WHERE join_limit > 0 AND joined_count >= join_limit AND is_active = 1')
     conn.commit()
     conn.close()
+</new_str>
