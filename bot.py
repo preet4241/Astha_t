@@ -6,7 +6,8 @@ from database import (
     add_user, get_user, ban_user, unban_user, 
     get_all_users, get_stats, increment_messages,
     set_setting, get_setting, add_channel, remove_channel,
-    get_all_channels, channel_exists
+    get_all_channels, channel_exists, add_group, remove_group,
+    get_all_groups, group_exists
 )
 
 api_id = int(os.getenv('API_ID', '22880380'))
@@ -20,6 +21,8 @@ broadcast_temp = {}
 start_text_temp = {}
 channel_action_temp = {}
 channel_page_temp = {}
+group_action_temp = {}
+group_page_temp = {}
 
 def get_greeting():
     hour = datetime.now().hour
@@ -78,6 +81,7 @@ async def start_handler(event):
             [Button.inline('Tools', b'owner_tools')],
             [Button.inline('Users', b'owner_users'), Button.inline('Broadcast', b'owner_broadcast')],
             [Button.inline('Status', b'owner_status'), Button.inline('Settings', b'owner_settings')],
+            [Button.inline('Groups', b'owner_groups')],
         ]
         custom_text = get_setting('owner_start_text', get_default_owner_text())
         owner_text = format_text(custom_text, sender, stats, None)
@@ -104,7 +108,117 @@ async def callback_handler(event):
         await event.answer("Owner only!", alert=True)
         return
     
-    if data == b'setting_start_text':
+    if data == b'owner_groups':
+        groups = get_all_groups()
+        buttons = [
+            [Button.inline('Add', b'group_add'), Button.inline('Remove', b'group_remove')],
+            [Button.inline('List', b'group_list_page_1')],
+            [Button.inline('Back', b'owner_back')],
+        ]
+        group_text = f"GROUPS\n\nConnected: {len(groups)}\n\nWhat do you want to do?"
+        await event.edit(group_text, buttons=buttons)
+    
+    elif data == b'group_add':
+        group_action_temp[sender.id] = 'add'
+        buttons = [[Button.inline('Cancel', b'owner_groups')]]
+        await event.edit("ADD GROUP\n\nChoose one method:\n1. Group ID (number)\n2. Group username (@username)\n3. Forward message from group", buttons=buttons)
+    
+    elif data == b'group_remove':
+        groups = get_all_groups()
+        if not groups:
+            await event.edit('No groups to remove!', buttons=[[Button.inline('Back', b'owner_groups')]])
+        else:
+            group_page_temp[sender.id] = 1
+            total_pages = (len(groups) + 5) // 6
+            start_idx = 0
+            end_idx = min(6, len(groups))
+            buttons = []
+            for grp in groups[start_idx:end_idx]:
+                buttons.append([Button.inline(f'X {grp["username"]}', f'remove_grp_{grp["group_id"]}')]) 
+            if total_pages > 1:
+                buttons.append([Button.inline(f'Next (1/{total_pages})', b'group_remove_next')])
+            buttons.append([Button.inline('Back', b'owner_groups')])
+            await event.edit('REMOVE GROUP\n\nSelect group to remove:', buttons=buttons)
+    
+    elif data == b'group_remove_next':
+        groups = get_all_groups()
+        page = group_page_temp.get(sender.id, 1) + 1
+        total_pages = (len(groups) + 5) // 6
+        if page > total_pages:
+            page = 1
+        group_page_temp[sender.id] = page
+        start_idx = (page - 1) * 6
+        end_idx = min(start_idx + 6, len(groups))
+        buttons = []
+        for grp in groups[start_idx:end_idx]:
+            buttons.append([Button.inline(f'X {grp["username"]}', f'remove_grp_{grp["group_id"]}')]) 
+        if total_pages > 1:
+            buttons.append([Button.inline(f'Next ({page}/{total_pages})', b'group_remove_next')])
+        buttons.append([Button.inline('Back', b'owner_groups')])
+        await event.edit('REMOVE GROUP\n\nSelect group to remove:', buttons=buttons)
+    
+    elif data == b'group_list_page_1':
+        groups = get_all_groups()
+        if not groups:
+            await event.edit('No groups yet!', buttons=[[Button.inline('Back', b'owner_groups')]])
+        else:
+            group_page_temp[sender.id] = 1
+            total_pages = (len(groups) + 5) // 6
+            start_idx = 0
+            end_idx = min(6, len(groups))
+            buttons = []
+            for grp in groups[start_idx:end_idx]:
+                buttons.append([Button.inline(grp["title"], f'show_grp_{grp["group_id"]}')])
+            if total_pages > 1:
+                buttons.append([Button.inline(f'Next (1/{total_pages})', b'group_list_next')])
+            buttons.append([Button.inline('Back', b'owner_groups')])
+            await event.edit('GROUPS LIST', buttons=buttons)
+    
+    elif data == b'group_list_next':
+        groups = get_all_groups()
+        page = group_page_temp.get(sender.id, 1) + 1
+        total_pages = (len(groups) + 5) // 6
+        if page > total_pages:
+            page = 1
+        group_page_temp[sender.id] = page
+        start_idx = (page - 1) * 6
+        end_idx = min(start_idx + 6, len(groups))
+        buttons = []
+        for grp in groups[start_idx:end_idx]:
+            buttons.append([Button.inline(grp["title"], f'show_grp_{grp["group_id"]}')])
+        if total_pages > 1:
+            buttons.append([Button.inline(f'Next ({page}/{total_pages})', b'group_list_next')])
+        buttons.append([Button.inline('Back', b'owner_groups')])
+        await event.edit('GROUPS LIST', buttons=buttons)
+    
+    elif data.startswith(b'remove_grp_'):
+        group_id = int(data.split(b'_')[2])
+        remove_group(group_id)
+        groups = get_all_groups()
+        if not groups:
+            await event.edit('All groups removed!', buttons=[[Button.inline('Back', b'owner_groups')]])
+        else:
+            total_pages = (len(groups) + 5) // 6
+            group_page_temp[sender.id] = 1
+            start_idx = 0
+            end_idx = min(6, len(groups))
+            buttons = []
+            for grp in groups[start_idx:end_idx]:
+                buttons.append([Button.inline(f'X {grp["username"]}', f'remove_grp_{grp["group_id"]}')]) 
+            if total_pages > 1:
+                buttons.append([Button.inline(f'Next (1/{total_pages})', b'group_remove_next')])
+            buttons.append([Button.inline('Back', b'owner_groups')])
+            await event.edit('REMOVE GROUP\n\nSelect group to remove:', buttons=buttons)
+    
+    elif data.startswith(b'show_grp_'):
+        group_id = int(data.split(b'_')[2])
+        groups = get_all_groups()
+        grp_info = next((g for g in groups if g['group_id'] == group_id), None)
+        if grp_info:
+            info_text = f"GROUP: {grp_info['title']}\nID: {grp_info['group_id']}\nUsername: @{grp_info['username']}\nAdded: {grp_info['added_date'][:10]}"
+            await event.edit(info_text, buttons=[[Button.inline('Back', b'group_list_page_1')]])
+    
+    elif data == b'setting_start_text':
         buttons = [
             [Button.inline('Owner', b'start_text_owner'), Button.inline('User', b'start_text_user')],
             [Button.inline('Back', b'owner_settings')],

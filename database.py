@@ -31,6 +31,15 @@ def init_db():
         )
     ''')
     
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS groups (
+            group_id INTEGER PRIMARY KEY,
+            group_username TEXT UNIQUE,
+            group_title TEXT,
+            added_date TEXT
+        )
+    ''')
+    
     conn.commit()
     conn.close()
 
@@ -301,3 +310,67 @@ def check_channel_limits():
     cursor.execute('UPDATE channels SET is_active = 0 WHERE join_limit > 0 AND joined_count >= join_limit AND is_active = 1')
     conn.commit()
     conn.close()
+
+def add_group(group_id, group_username, group_title):
+    """Add group"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            INSERT INTO groups (group_id, group_username, group_title, added_date)
+            VALUES (?, ?, ?, ?)
+        ''', (group_id, group_username, group_title, datetime.now().isoformat()))
+        conn.commit()
+        result = True
+    except sqlite3.IntegrityError:
+        result = False
+    finally:
+        conn.close()
+    
+    return result
+
+def remove_group(group_id):
+    """Remove group"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('DELETE FROM groups WHERE group_id = ?', (group_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+def get_all_groups():
+    """Get all groups"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT group_id, group_username, group_title, added_date FROM groups ORDER BY added_date DESC')
+    groups = cursor.fetchall()
+    conn.close()
+    
+    result = []
+    for grp in groups:
+        result.append({
+            'group_id': grp[0],
+            'username': grp[1],
+            'title': grp[2],
+            'added_date': grp[3]
+        })
+    
+    return result
+
+def group_exists(group_id):
+    """Check if group exists"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT 1 FROM groups WHERE group_id = ?', (group_id,))
+    exists = cursor.fetchone() is not None
+    conn.close()
+    
+    return exists
