@@ -104,7 +104,7 @@ async def handle_channel_addition(event, sender):
             }
             
             buttons = [[Button.inline('❌ Cancel', b'setting_sub_force')]]
-            msg = f""" Channel Details Fetched!
+            msg = f"""✅ Channel Details Fetched!
 
 📌 Channel: {channel_title}
 🔗 Link: {channel_link}
@@ -635,13 +635,64 @@ Admin & User Management System"""
         await event.edit(about_text, buttons=[[Button.inline('⬅️ Back', b'user_back')]])
     
     elif data == b'user_ban':
-        await event.edit('🚫 Ban User Feature\n\n(Coming soon...)', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+        if sender.id != owner_id:
+            return
+        buttons = [[Button.inline('⬅️ Back', b'owner_users')]]
+        await event.edit('🚫 BAN USER\n\n━━━━━━━━━━━━━━━━\n\nSend User ID or Username to ban:\n\nOr reply to user message with /ban', buttons=buttons)
     
     elif data == b'user_unban':
-        await event.edit('✅ Unban User Feature\n\n(Coming soon...)', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+        if sender.id != owner_id:
+            return
+        banned_users = get_banned_users()
+        if not banned_users:
+            await event.edit('✅ No banned users!', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+        else:
+            page = 1
+            total_pages = (len(banned_users) + 5) // 6
+            start_idx = 0
+            end_idx = min(6, len(banned_users))
+            buttons = []
+            for user in banned_users[start_idx:end_idx]:
+                buttons.append([Button.inline(f"✅ {user['first_name']} (@{user['username']})", f"unban_{user['user_id']}".encode())])
+            if total_pages > 1:
+                buttons.append([Button.inline(f'➡️ Next (1/{total_pages})', b'unban_page_2')])
+            buttons.append([Button.inline('⬅️ Back', b'owner_users')])
+            await event.edit(f'🚫 BANNED USERS (Page 1/{total_pages})\n\n━━━━━━━━━━━━━━━━\nSelect user to unban:', buttons=buttons)
+    
+    elif data.startswith(b'unban_page_'):
+        if sender.id != owner_id:
+            return
+        page = int(data.split(b'_')[2])
+        banned_users = get_banned_users()
+        total_pages = (len(banned_users) + 5) // 6
+        start_idx = (page - 1) * 6
+        end_idx = min(start_idx + 6, len(banned_users))
+        buttons = []
+        for user in banned_users[start_idx:end_idx]:
+            buttons.append([Button.inline(f"✅ {user['first_name']} (@{user['username']})", f"unban_{user['user_id']}".encode())])
+        nav_buttons = []
+        if page > 1:
+            nav_buttons.append(Button.inline(f'⬅️ Prev ({page}/{total_pages})', f'unban_page_{page-1}'.encode()))
+        if page < total_pages:
+            nav_buttons.append(Button.inline(f'➡️ Next ({page}/{total_pages})', f'unban_page_{page+1}'.encode()))
+        if nav_buttons:
+            buttons.append(nav_buttons)
+        buttons.append([Button.inline('⬅️ Back', b'owner_users')])
+        await event.edit(f'🚫 BANNED USERS (Page {page}/{total_pages})\n\n━━━━━━━━━━━━━━━━\nSelect user to unban:', buttons=buttons)
+    
+    elif data.startswith(b'unban_'):
+        if sender.id != owner_id:
+            return
+        user_id = int(data.split(b'_')[1])
+        unban_user(user_id)
+        user = get_user(user_id)
+        await event.edit(f"✅ User unbanned!\n\n👤 {user['first_name']} (@{user['username']})", buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
     
     elif data == b'user_info':
-        await event.edit('ℹ️ User Info\n\n(Coming soon...)', buttons=[[Button.inline('⬅️ Back', b'owner_users')]])
+        if sender.id != owner_id:
+            return
+        buttons = [[Button.inline('⬅️ Back', b'owner_users')]]
+        await event.edit('ℹ️ USER INFO\n\n━━━━━━━━━━━━━━━━\n\nSend User ID or Username:\n\nOr reply to user message with /info', buttons=buttons)
     
     elif data == b'owner_back':
         buttons = [
@@ -682,6 +733,140 @@ async def hello_handler(event):
 async def time_handler(event):
     current_time = datetime.datetime.now().strftime("%H:%M:%S")
     await event.respond(f'⏰ {current_time}')
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'/ban(?:\s+(.+))?'))
+async def ban_handler(event):
+    sender = await event.get_sender()
+    if sender.id != owner_id:
+        return
+    
+    match = event.pattern_match
+    user_input = match.group(1) if match.group(1) else None
+    target_user = None
+    
+    # Check if replying to a message
+    if event.is_reply:
+        reply_msg = await event.get_reply_message()
+        target_sender = await reply_msg.get_sender()
+        target_user = get_user(target_sender.id)
+        if not target_user:
+            add_user(target_sender.id, target_sender.username or 'unknown', target_sender.first_name or 'User')
+            target_user = get_user(target_sender.id)
+    elif user_input:
+        # Try to get user by ID or username
+        try:
+            if user_input.isdigit():
+                target_user = get_user(int(user_input))
+            else:
+                username = user_input.replace('@', '')
+                all_users = get_all_users()
+                for uid, udata in all_users.items():
+                    if udata['username'].lower() == username.lower():
+                        target_user = udata
+                        break
+        except:
+            pass
+    
+    if target_user:
+        ban_user(target_user['user_id'])
+        await event.respond(f"🚫 User banned!\n\n👤 {target_user['first_name']} (@{target_user['username']})\n🆔 ID: {target_user['user_id']}")
+    else:
+        await event.respond('⚠️ User not found!\n\nUsage:\n/ban <user_id>\n/ban <username>\nOr reply to user message with /ban')
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'/unban(?:\s+(.+))?'))
+async def unban_handler(event):
+    sender = await event.get_sender()
+    if sender.id != owner_id:
+        return
+    
+    match = event.pattern_match
+    user_input = match.group(1) if match.group(1) else None
+    target_user = None
+    
+    # Check if replying to a message
+    if event.is_reply:
+        reply_msg = await event.get_reply_message()
+        target_sender = await reply_msg.get_sender()
+        target_user = get_user(target_sender.id)
+    elif user_input:
+        # Try to get user by ID or username
+        try:
+            if user_input.isdigit():
+                target_user = get_user(int(user_input))
+            else:
+                username = user_input.replace('@', '')
+                all_users = get_all_users()
+                for uid, udata in all_users.items():
+                    if udata['username'].lower() == username.lower():
+                        target_user = udata
+                        break
+        except:
+            pass
+    
+    if target_user:
+        unban_user(target_user['user_id'])
+        await event.respond(f"✅ User unbanned!\n\n👤 {target_user['first_name']} (@{target_user['username']})\n🆔 ID: {target_user['user_id']}")
+    else:
+        await event.respond('⚠️ User not found!\n\nUsage:\n/unban <user_id>\n/unban <username>\nOr reply to user message with /unban')
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'/info(?:\s+(.+))?'))
+async def info_handler(event):
+    sender = await event.get_sender()
+    if sender.id != owner_id:
+        return
+    
+    match = event.pattern_match
+    user_input = match.group(1) if match.group(1) else None
+    target_user = None
+    
+    # Check if replying to a message
+    if event.is_reply:
+        reply_msg = await event.get_reply_message()
+        target_sender = await reply_msg.get_sender()
+        target_user = get_user(target_sender.id)
+        if not target_user:
+            add_user(target_sender.id, target_sender.username or 'unknown', target_sender.first_name or 'User')
+            target_user = get_user(target_sender.id)
+    elif user_input:
+        # Try to get user by ID or username
+        try:
+            if user_input.isdigit():
+                target_user = get_user(int(user_input))
+            else:
+                username = user_input.replace('@', '')
+                all_users = get_all_users()
+                for uid, udata in all_users.items():
+                    if udata['username'].lower() == username.lower():
+                        target_user = udata
+                        break
+        except:
+            pass
+    
+    if target_user:
+        status = '🚫 Banned' if target_user['banned'] else '✅ Active'
+        info_text = f"""ℹ️ USER INFORMATION
+
+━━━━━━━━━━━━━━━━
+👤 Profile:
+  • Name: {target_user['first_name']}
+  • Username: @{target_user['username']}
+  • ID: {target_user['user_id']}
+
+📊 Activity:
+  • Messages: {target_user['messages']}
+  • Joined: {target_user['joined'][:10]}
+  • Status: {status}
+
+━━━━━━━━━━━━━━━━"""
+        await event.respond(info_text)
+    else:
+        await event.respond('⚠️ User not found!\n\nUsage:\n/info <user_id>\n/info <username>\nOr reply to user message with /info')
+    
     raise events.StopPropagation
 
 @client.on(events.NewMessage)
