@@ -1,71 +1,143 @@
-import json
+import sqlite3
 import os
 from datetime import datetime
 
-USERS_FILE = 'users_data.json'
+DB_FILE = 'bot_database.db'
 
-def load_users():
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-def save_users(users):
-    with open(USERS_FILE, 'w') as f:
-        json.dump(users, f, indent=2)
+def init_db():
+    """Initialize SQLite database"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY,
+            username TEXT,
+            first_name TEXT,
+            joined TEXT,
+            messages INTEGER DEFAULT 0,
+            banned INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'active'
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
 
 def add_user(user_id, username, first_name):
-    users = load_users()
-    if str(user_id) not in users:
-        users[str(user_id)] = {
-            'user_id': user_id,
-            'username': username,
-            'first_name': first_name,
-            'joined': datetime.now().isoformat(),
-            'messages': 0,
-            'banned': False,
-            'status': 'active'
-        }
-        save_users(users)
-    return users[str(user_id)]
+    """Add new user to database"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            INSERT OR IGNORE INTO users (user_id, username, first_name, joined)
+            VALUES (?, ?, ?, ?)
+        ''', (user_id, username, first_name, datetime.now().isoformat()))
+        conn.commit()
+    except Exception as e:
+        print(f"Error adding user: {e}")
+    finally:
+        conn.close()
 
 def get_user(user_id):
-    users = load_users()
-    return users.get(str(user_id))
+    """Get user from database"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if user:
+        return {
+            'user_id': user[0],
+            'username': user[1],
+            'first_name': user[2],
+            'joined': user[3],
+            'messages': user[4],
+            'banned': user[5],
+            'status': user[6]
+        }
+    return None
 
 def ban_user(user_id):
-    users = load_users()
-    if str(user_id) in users:
-        users[str(user_id)]['banned'] = True
-        save_users(users)
-        return True
-    return False
+    """Ban user"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('UPDATE users SET banned = 1 WHERE user_id = ?', (user_id,))
+    conn.commit()
+    conn.close()
+    return True
 
 def unban_user(user_id):
-    users = load_users()
-    if str(user_id) in users:
-        users[str(user_id)]['banned'] = False
-        save_users(users)
-        return True
-    return False
+    """Unban user"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('UPDATE users SET banned = 0 WHERE user_id = ?', (user_id,))
+    conn.commit()
+    conn.close()
+    return True
 
 def increment_messages(user_id):
-    users = load_users()
-    if str(user_id) in users:
-        users[str(user_id)]['messages'] += 1
-        save_users(users)
+    """Increment message count"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('UPDATE users SET messages = messages + 1 WHERE user_id = ?', (user_id,))
+    conn.commit()
+    conn.close()
 
 def get_all_users():
-    return load_users()
+    """Get all users"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM users')
+    users = cursor.fetchall()
+    conn.close()
+    
+    result = {}
+    for user in users:
+        result[str(user[0])] = {
+            'user_id': user[0],
+            'username': user[1],
+            'first_name': user[2],
+            'joined': user[3],
+            'messages': user[4],
+            'banned': user[5],
+            'status': user[6]
+        }
+    return result
 
 def get_stats():
-    users = load_users()
-    total = len(users)
-    banned = sum(1 for u in users.values() if u.get('banned', False))
-    active = total - banned
+    """Get bot statistics"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT COUNT(*) FROM users')
+    total = cursor.fetchone()[0]
+    
+    cursor.execute('SELECT COUNT(*) FROM users WHERE banned = 1')
+    banned = cursor.fetchone()[0]
+    
+    cursor.execute('SELECT SUM(messages) FROM users')
+    total_messages = cursor.fetchone()[0] or 0
+    
+    conn.close()
+    
     return {
         'total_users': total,
         'banned_users': banned,
-        'active_users': active,
-        'total_messages': sum(u.get('messages', 0) for u in users.values())
+        'active_users': total - banned,
+        'total_messages': total_messages
     }
