@@ -1,8 +1,7 @@
 from telethon import TelegramClient, events, Button
 import os
-import datetime
 from datetime import datetime, timedelta
-from users_db import (
+from database import (
     add_user, get_user, ban_user, unban_user, 
     get_all_users, get_stats, increment_messages,
     set_setting, get_setting, add_channel, remove_channel,
@@ -25,7 +24,7 @@ channel_temp = {}
 
 def get_greeting():
     """Get greeting based on current time"""
-    hour = datetime.datetime.now().hour
+    hour = datetime.now().hour
     if 5 <= hour < 12:
         return "Good Morning"
     elif 12 <= hour < 17:
@@ -228,9 +227,9 @@ What would you like to do?"""
 
 def format_text(text, sender, stats, user=None):
     """Format text with placeholders"""
-    current_date = datetime.datetime.now().strftime("%d-%m-%Y")
-    current_time = datetime.datetime.now().strftime("%H:%M:%S")
-    current_datetime = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+    current_date = datetime.now().strftime("%d-%m-%Y")
+    current_time = datetime.now().strftime("%H:%M:%S")
+    current_datetime = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     
     user_messages = 0
     joined_date = "Unknown"
@@ -351,8 +350,8 @@ Send messages to all active users with custom placeholders:
     
     elif data == b'owner_status':
         stats = get_stats()
-        current_time = datetime.datetime.now().strftime("%H:%M:%S")
-        current_date = datetime.datetime.now().strftime("%d-%m-%Y")
+        current_time = datetime.now().strftime("%H:%M:%S")
+        current_date = datetime.now().strftime("%d-%m-%Y")
         status_text = f"""📊 BOT STATUS
 
 ━━━━━━━━━━━━━━━━
@@ -679,7 +678,7 @@ async def hello_handler(event):
 
 @client.on(events.NewMessage(pattern='/time'))
 async def time_handler(event):
-    current_time = datetime.datetime.now().strftime("%H:%M:%S")
+    current_time = datetime.now().strftime("%H:%M:%S")
     await event.respond(f'⏰ {current_time}')
     raise events.StopPropagation
 
@@ -718,9 +717,9 @@ async def message_handler(event):
         sent_count = 0
         failed_count = 0
         
-        current_date = datetime.datetime.now().strftime("%d-%m-%Y")
-        current_time = datetime.datetime.now().strftime("%H:%M:%S")
-        current_datetime = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        current_date = datetime.now().strftime("%d-%m-%Y")
+        current_time = datetime.now().strftime("%H:%M:%S")
+        current_datetime = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
         
         for user_id_str, user in all_users.items():
             if user.get('banned'):
