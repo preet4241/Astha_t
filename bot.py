@@ -15,10 +15,25 @@ client = TelegramClient('bot', api_id, api_hash).start(bot_token=bot_token)
 
 broadcast_temp = {}
 
+def get_greeting():
+    """Get greeting based on current time"""
+    hour = datetime.datetime.now().hour
+    if 5 <= hour < 12:
+        return "Good Morning"
+    elif 12 <= hour < 17:
+        return "Good Afternoon"
+    elif 17 <= hour < 21:
+        return "Good Evening"
+    else:
+        return "Good Night"
+
 @client.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
     sender = await event.get_sender()
     add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
+    
+    greeting = get_greeting()
+    stats = get_stats()
     
     if sender.id == owner_id:
         buttons = [
@@ -26,12 +41,14 @@ async def start_handler(event):
             [Button.inline('👥 Users', b'owner_users'), Button.inline('📢 Broadcast', b'owner_broadcast')],
             [Button.inline('📊 Status', b'owner_status'), Button.inline('⚙️ Settings', b'owner_settings')],
         ]
-        owner_text = """🔐 OWNER PANEL
+        owner_text = f"""{greeting} Boss 👑
+
+🤖 Status: 🟢 Active
+👥 Users: {stats['total_users']} | ✅ Active: {stats['active_users']}
 
 ━━━━━━━━━━━━━━━━
-Welcome to the owner control panel!
+Your Control Desk:
 
-Manage your bot:
 👥 Users - User management
 📢 Broadcast - Send messages
 📊 Status - View statistics
@@ -45,10 +62,13 @@ Manage your bot:
             [Button.inline('👤 Profile', b'user_profile'), Button.inline('❓ Help', b'user_help')],
             [Button.inline('ℹ️ About', b'user_about')],
         ]
-        user_text = f"""👋 Welcome {sender.first_name}!
+        user_text = f"""{greeting} {sender.first_name}! 👋
+
+🤖 Status: 🟢 Active
+👥 Community: {stats['total_users']} Users
 
 ━━━━━━━━━━━━━━━━
-Explore features:
+What would you like to do?
 
 👤 Profile - View your profile
 ❓ Help - Get help
@@ -236,12 +256,16 @@ Admin & User Management System"""
             [Button.inline('👥 Users', b'owner_users'), Button.inline('📢 Broadcast', b'owner_broadcast')],
             [Button.inline('📊 Status', b'owner_status'), Button.inline('⚙️ Settings', b'owner_settings')],
         ]
-        owner_text = """🔐 OWNER PANEL
+        greeting = get_greeting()
+        stats = get_stats()
+        owner_text = f"""{greeting} Boss 👑
+
+🤖 Status: 🟢 Active
+👥 Users: {stats['total_users']} | ✅ Active: {stats['active_users']}
 
 ━━━━━━━━━━━━━━━━
-Welcome to the owner control panel!
+Your Control Desk:
 
-Manage your bot:
 👥 Users - User management
 📢 Broadcast - Send messages
 📊 Status - View statistics
@@ -256,10 +280,15 @@ Manage your bot:
             [Button.inline('👤 Profile', b'user_profile'), Button.inline('❓ Help', b'user_help')],
             [Button.inline('ℹ️ About', b'user_about')],
         ]
-        user_text = """👋 USER MENU
+        greeting = get_greeting()
+        stats = get_stats()
+        user_text = f"""{greeting}! 👋
+
+🤖 Status: 🟢 Active
+👥 Community: {stats['total_users']} Users
 
 ━━━━━━━━━━━━━━━━
-Explore features:
+What would you like to do?
 
 👤 Profile - View your profile
 ❓ Help - Get help
