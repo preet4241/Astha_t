@@ -2,12 +2,12 @@ from telethon import TelegramClient, events, Button
 import os
 import datetime
 from datetime import datetime, timedelta
-from users_db import (
+from database import (
     add_user, get_user, ban_user, unban_user, 
     get_all_users, get_stats, increment_messages,
     set_setting, get_setting, add_channel, remove_channel,
     get_all_channels, channel_exists, deactivate_expired_channels,
-    check_channel_limits
+    check_channel_limits, get_banned_users
 )
 
 api_id = int(os.getenv('API_ID', '22880380'))
@@ -104,7 +104,7 @@ async def handle_channel_addition(event, sender):
             }
             
             buttons = [[Button.inline('❌ Cancel', b'setting_sub_force')]]
-            await event.respond(f"""✅ Channel Details Fetched!
+            msg = f"""✅ Channel Details Fetched!
 
 📌 Channel: {channel_title}
 🔗 Link: {channel_link}
@@ -118,7 +118,8 @@ async def handle_channel_addition(event, sender):
   • Enter a number (e.g., 100, 500)
   • Enter 0 for unlimited (∞)
 
-Type the number:""", buttons=buttons)
+Type the number:"""
+            await event.respond(msg, buttons=buttons)
             
         except Exception as e:
             await event.respond(f"❌ Error: {str(e)}\n\nPlease try again.")
