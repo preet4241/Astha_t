@@ -477,6 +477,48 @@ async def message_handler(event):
             await event.respond(f'Channel {ch_name} added successfully!', buttons=buttons)
         raise events.StopPropagation
     
+    if group_action_temp.get(sender.id) == 'add':
+        grp_id = None
+        grp_name = None
+        grp_title = None
+        
+        if event.forward and event.forward.chat:
+            try:
+                group_entity = await client.get_entity(event.forward.chat)
+                grp_id = group_entity.id
+                grp_name = group_entity.username or str(group_entity.id)
+                grp_title = group_entity.title
+            except Exception as e:
+                await event.respond(f'Error extracting group: {str(e)}')
+                return
+        elif event.text:
+            grp_input = event.text.strip()
+            if grp_input.isdigit():
+                grp_id = int(grp_input)
+                grp_name = grp_input
+                grp_title = grp_input
+            elif grp_input.startswith('@'):
+                grp_name = grp_input[1:]
+                grp_id = hash(grp_name) % 1000000
+                grp_title = grp_input[1:]
+            else:
+                await event.respond('Invalid format. Use: ID number, @username, or forward message.')
+                return
+        
+        if not grp_id or not grp_name:
+            await event.respond('Send one of: ID, @username, or forward a message.')
+            return
+        
+        if group_exists(grp_id):
+            buttons = [[Button.inline('Back', b'owner_groups')]]
+            await event.respond(f'Group {grp_name} already added!', buttons=buttons)
+        else:
+            add_group(grp_id, grp_name, grp_title)
+            group_action_temp[sender.id] = None
+            buttons = [[Button.inline('Back', b'owner_groups')]]
+            await event.respond(f'Group {grp_name} added successfully!', buttons=buttons)
+        raise events.StopPropagation
+    
     if start_text_temp.get(sender.id):
         text_type = start_text_temp[sender.id]
         message = event.text
@@ -519,6 +561,22 @@ async def message_handler(event):
         buttons = [[Button.inline('Back', b'owner_back')]]
         await event.respond(result_text, buttons=buttons)
         raise events.StopPropagation
+
+@client.on(events.ChatAction())
+async def chat_action_handler(event):
+    if event.user_joined or event.user_added:
+        chat = await event.get_chat()
+        try:
+            if hasattr(chat, 'id') and event.action_user == (await client.get_me()).id:
+                grp_id = chat.id
+                grp_name = chat.username or str(chat.id)
+                grp_title = chat.title or 'Unknown'
+                
+                if not group_exists(grp_id):
+                    add_group(grp_id, grp_name, grp_title)
+        except Exception as e:
+            print(f"Error in auto-detect group: {e}")
+    raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern='/hello'))
 async def hello_handler(event):
