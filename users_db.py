@@ -26,7 +26,12 @@ def init_db():
             channel_id INTEGER PRIMARY KEY,
             channel_username TEXT UNIQUE,
             channel_title TEXT,
-            added_date TEXT
+            channel_link TEXT,
+            added_date TEXT,
+            join_limit INTEGER DEFAULT 0,
+            joined_count INTEGER DEFAULT 0,
+            expiry_date TEXT,
+            is_active INTEGER DEFAULT 1
         )
     ''')
     
@@ -183,7 +188,7 @@ def get_setting(key, default=''):
     conn.close()
     return result[0] if result else default
 
-def add_channel(channel_username, channel_title):
+def add_channel(channel_username, channel_title, channel_link='', join_limit=0, expiry_date=None):
     """Add required channel"""
     init_db()
     conn = sqlite3.connect(DB_FILE)
@@ -191,9 +196,9 @@ def add_channel(channel_username, channel_title):
     
     try:
         cursor.execute('''
-            INSERT INTO channels (channel_username, channel_title, added_date)
-            VALUES (?, ?, ?)
-        ''', (channel_username, channel_title, datetime.now().isoformat()))
+            INSERT INTO channels (channel_username, channel_title, channel_link, added_date, join_limit, expiry_date, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, 1)
+        ''', (channel_username, channel_title, channel_link, datetime.now().isoformat(), join_limit, expiry_date))
         conn.commit()
         result = True
     except sqlite3.IntegrityError:
@@ -220,7 +225,7 @@ def get_all_channels():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    cursor.execute('SELECT channel_id, channel_username, channel_title, added_date FROM channels ORDER BY added_date DESC')
+    cursor.execute('SELECT channel_id, channel_username, channel_title, channel_link, added_date, join_limit, joined_count, expiry_date, is_active FROM channels ORDER BY added_date DESC')
     channels = cursor.fetchall()
     conn.close()
     
@@ -230,7 +235,12 @@ def get_all_channels():
             'channel_id': ch[0],
             'username': ch[1],
             'title': ch[2],
-            'added_date': ch[3]
+            'link': ch[3],
+            'added_date': ch[4],
+            'join_limit': ch[5],
+            'joined_count': ch[6],
+            'expiry_date': ch[7],
+            'is_active': ch[8]
         })
     
     return result
@@ -246,3 +256,37 @@ def channel_exists(channel_username):
     conn.close()
     
     return exists
+
+
+
+def increment_channel_join(channel_username):
+    """Increment join count for channel"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('UPDATE channels SET joined_count = joined_count + 1 WHERE channel_username = ?', (channel_username,))
+    conn.commit()
+    conn.close()
+
+def deactivate_expired_channels():
+    """Deactivate channels that have reached their expiry date"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    current_time = datetime.now().isoformat()
+    cursor.execute('UPDATE channels SET is_active = 0 WHERE expiry_date IS NOT NULL AND expiry_date <= ? AND is_active = 1', (current_time,))
+    conn.commit()
+    conn.close()
+
+def check_channel_limits():
+    """Check and deactivate channels that have reached their join limit"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('UPDATE channels SET is_active = 0 WHERE join_limit > 0 AND joined_count >= join_limit AND is_active = 1')
+    conn.commit()
+    conn.close()
+</new_str>

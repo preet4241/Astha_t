@@ -1,11 +1,13 @@
 from telethon import TelegramClient, events, Button
 import os
 import datetime
+from datetime import datetime, timedelta
 from users_db import (
     add_user, get_user, ban_user, unban_user, 
     get_all_users, get_stats, increment_messages,
     set_setting, get_setting, add_channel, remove_channel,
-    get_all_channels, channel_exists
+    get_all_channels, channel_exists, deactivate_expired_channels,
+    check_channel_limits
 )
 
 api_id = int(os.getenv('API_ID', '22880380'))
@@ -19,6 +21,7 @@ broadcast_temp = {}
 start_text_temp = {}
 channel_action_temp = {}
 channel_page_temp = {}
+channel_temp = {}
 
 def get_greeting():
     """Get greeting based on current time"""
@@ -46,6 +49,181 @@ def get_default_user_text():
     """Default user start text"""
     return """{greeting} {first_name}! 👋
 ━━━━━━━━━━━━━━━━
+
+
+async def handle_channel_addition(event, sender):
+    """Handle multi-step channel addition process"""
+    from datetime import timedelta
+    import re
+    
+    step_data = channel_temp[sender.id]
+    step = step_data.get('step')
+    
+    # Step 1: Get channel info
+    if step == 'channel_info':
+        try:
+            # Check if it's a forwarded message
+            if event.forward:
+                if event.forward.chat:
+                    channel_entity = await client.get_entity(event.forward.chat)
+                    channel_id = channel_entity.id
+                    channel_username = channel_entity.username or str(channel_id)
+                    channel_title = channel_entity.title
+                    channel_link = f"https://t.me/{channel_username}" if channel_entity.username else f"https://t.me/c/{str(channel_id)[4:]}"
+                else:
+                    await event.respond("⚠️ Invalid forward! Please forward from a channel.")
+                    return
+            else:
+                # Text input - username or link
+                ch_input = event.text.strip()
+                ch_name = ch_input.replace('@', '').replace('https://t.me/', '').replace('https://telegram.me/', '')
+                
+                try:
+                    channel_entity = await client.get_entity(ch_name)
+                    channel_id = channel_entity.id
+                    channel_username = channel_entity.username or str(channel_id)
+                    channel_title = channel_entity.title
+                    channel_link = f"https://t.me/{channel_username}" if channel_entity.username else f"https://t.me/c/{str(channel_id)[4:]}"
+                except Exception as e:
+                    await event.respond(f"⚠️ Channel not found!\n\nError: {str(e)}\n\nPlease try again with valid username/link.")
+                    return
+            
+            if channel_exists(channel_username):
+                buttons = [[Button.inline('⬅️ Back', b'setting_sub_force')]]
+                await event.respond(f'⚠️ Channel already added!\n\n@{channel_username}', buttons=buttons)
+                channel_temp[sender.id] = None
+                return
+            
+            # Save channel info
+            channel_temp[sender.id] = {
+                'step': 'join_limit',
+                'username': channel_username,
+                'title': channel_title,
+                'link': channel_link,
+                'id': channel_id
+            }
+            
+            buttons = [[Button.inline('❌ Cancel', b'setting_sub_force')]]
+            await event.respond(f"""✅ Channel Details Fetched!
+
+📌 Channel: {channel_title}
+🔗 Link: {channel_link}
+👤 Username: @{channel_username}
+
+━━━━━━━━━━━━━━━━
+
+➕ ADD CHANNEL - STEP 2/3
+
+📊 How many users must join this channel?
+  • Enter a number (e.g., 100, 500)
+  • Enter 0 for unlimited (∞)
+
+Type the number:""", buttons=buttons)
+            
+        except Exception as e:
+            await event.respond(f"❌ Error: {str(e)}\n\nPlease try again.")
+            channel_temp[sender.id] = None
+    
+    # Step 2: Get join limit
+    elif step == 'join_limit':
+        try:
+            join_limit = int(event.text.strip())
+            if join_limit < 0:
+                await event.respond("⚠️ Please enter a positive number or 0 for unlimited.")
+                return
+            
+            step_data['join_limit'] = join_limit
+            step_data['step'] = 'expiry_time'
+            channel_temp[sender.id] = step_data
+            
+            buttons = [[Button.inline('❌ Cancel', b'setting_sub_force')]]
+            limit_text = f"{join_limit} users" if join_limit > 0 else "Unlimited (∞)"
+            await event.respond(f"""✅ Join Limit Set: {limit_text}
+
+━━━━━━━━━━━━━━━━
+
+➕ ADD CHANNEL - STEP 3/3
+
+⏰ Set Time Limit (Optional):
+  • 1d = 1 day
+  • 1w = 1 week
+  • 1m = 1 month
+  • 30min = 30 minutes
+
+  • Enter 0 or 'none' for permanent
+
+Examples: 7d, 2w, 3m, 120min
+
+Type the time duration:""", buttons=buttons)
+            
+        except ValueError:
+            await event.respond("⚠️ Invalid number! Please enter a valid number.")
+    
+    # Step 3: Get expiry time
+    elif step == 'expiry_time':
+        try:
+            time_input = event.text.strip().lower()
+            expiry_date = None
+            duration_text = "Permanent"
+            
+            if time_input not in ['0', 'none', '']:
+                # Parse time duration
+                match = re.match(r'(\d+)(d|w|m|min)', time_input)
+                if not match:
+                    await event.respond("⚠️ Invalid format!\n\nUse: 1d, 1w, 1m, 30min")
+                    return
+                
+                amount = int(match.group(1))
+                unit = match.group(2)
+                
+                current_time = datetime.now()
+                if unit == 'd':
+                    expiry_date = current_time + timedelta(days=amount)
+                    duration_text = f"{amount} day(s)"
+                elif unit == 'w':
+                    expiry_date = current_time + timedelta(weeks=amount)
+                    duration_text = f"{amount} week(s)"
+                elif unit == 'm':
+                    expiry_date = current_time + timedelta(days=amount*30)
+                    duration_text = f"{amount} month(s)"
+                elif unit == 'min':
+                    expiry_date = current_time + timedelta(minutes=amount)
+                    duration_text = f"{amount} minute(s)"
+                
+                expiry_date = expiry_date.isoformat() if expiry_date else None
+            
+            # Save channel to database
+            username = step_data['username']
+            title = step_data['title']
+            link = step_data['link']
+            join_limit = step_data['join_limit']
+            
+            add_channel(username, title, link, join_limit, expiry_date)
+            
+            limit_text = f"{join_limit} users" if join_limit > 0 else "Unlimited (∞)"
+            
+            buttons = [[Button.inline('⬅️ Back to Settings', b'setting_sub_force')]]
+            await event.respond(f"""✅ CHANNEL ADDED SUCCESSFULLY!
+
+━━━━━━━━━━━━━━━━
+📌 Channel: {title}
+🔗 Link: {link}
+👤 Username: @{username}
+
+📊 Settings:
+  • Join Limit: {limit_text}
+  • Duration: {duration_text}
+
+━━━━━━━━━━━━━━━━
+Users must now join this channel to use the bot!""", buttons=buttons)
+            
+            channel_temp[sender.id] = None
+            
+        except Exception as e:
+            await event.respond(f"❌ Error: {str(e)}\n\nPlease try again.")
+            channel_temp[sender.id] = None
+
+
 What would you like to do?"""
 
 def format_text(text, sender, stats, user=None):
@@ -330,12 +508,16 @@ What would you like to do?"""
         await event.edit(sub_text, buttons=buttons)
     
     elif data == b'sub_force_add':
-        channel_action_temp[sender.id] = 'add'
+        channel_temp[sender.id] = {'step': 'channel_info'}
         buttons = [[Button.inline('❌ Cancel', b'setting_sub_force')]]
-        await event.edit("""➕ ADD CHANNEL
+        await event.edit("""➕ ADD CHANNEL - STEP 1/3
 
-Type channel username/link:
-(Example: @mychannel or https://t.me/mychannel)""", buttons=buttons)
+📌 Send Channel Information:
+  • Channel Username (e.g., @mychannel)
+  • Channel Link (e.g., https://t.me/mychannel)
+  • Forward a message from the channel
+
+Any of these methods will work!""", buttons=buttons)
     
     elif data == b'sub_force_remove':
         channels = get_all_channels()
@@ -505,18 +687,8 @@ async def time_handler(event):
 async def message_handler(event):
     sender = await event.get_sender()
     
-    if channel_action_temp.get(sender.id) == 'add':
-        ch_input = event.text.strip()
-        ch_name = ch_input.replace('@', '').replace('https://t.me/', '')
-        
-        if channel_exists(ch_name):
-            buttons = [[Button.inline('⬅️ Back', b'setting_sub_force')]]
-            await event.respond(f'⚠️ Channel @{ch_name} already added!', buttons=buttons)
-        else:
-            add_channel(ch_name, ch_name)
-            channel_action_temp[sender.id] = None
-            buttons = [[Button.inline('⬅️ Back', b'setting_sub_force')]]
-            await event.respond(f'✅ Channel @{ch_name} added successfully!\n\nUsers must join this channel to use the bot.', buttons=buttons)
+    if channel_temp.get(sender.id):
+        await handle_channel_addition(event, sender)
         raise events.StopPropagation
     
     if start_text_temp.get(sender.id):
