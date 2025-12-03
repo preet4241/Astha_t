@@ -14,6 +14,7 @@ owner_id = int(os.getenv('OWNER_ID', '0'))
 client = TelegramClient('bot', api_id, api_hash).start(bot_token=bot_token)
 
 broadcast_temp = {}
+start_text_temp = {}
 
 def get_greeting():
     """Get greeting based on current time"""
@@ -176,7 +177,49 @@ Configure your bot behavior and features:
         await event.edit(settings_text, buttons=buttons)
     
     elif data == b'setting_start_text':
-        await event.edit('✍️ Start Text: [Placeholder]\n\n(Coming soon...)', buttons=[[Button.inline('⬅️ Back', b'owner_settings')]])
+        buttons = [
+            [Button.inline('👑 Owner', b'start_text_owner'), Button.inline('👤 User', b'start_text_user')],
+            [Button.inline('⬅️ Back', b'owner_settings')],
+        ]
+        await event.edit('✍️ START TEXT\n\n━━━━━━━━━━━━━━━━\nChoose which text to customize:', buttons=buttons)
+    
+    elif data == b'start_text_owner':
+        buttons = [
+            [Button.inline('✏️ Edit', b'start_text_owner_edit'), Button.inline('👁️ See', b'start_text_owner_see')],
+            [Button.inline('🔄 Default', b'start_text_owner_default')],
+            [Button.inline('⬅️ Back', b'setting_start_text')],
+        ]
+        await event.edit('👑 OWNER START TEXT\n\n━━━━━━━━━━━━━━━━\nWhat do you want to do?', buttons=buttons)
+    
+    elif data == b'start_text_user':
+        buttons = [
+            [Button.inline('✏️ Edit', b'start_text_user_edit'), Button.inline('👁️ See', b'start_text_user_see')],
+            [Button.inline('🔄 Default', b'start_text_user_default')],
+            [Button.inline('⬅️ Back', b'setting_start_text')],
+        ]
+        await event.edit('👤 USER START TEXT\n\n━━━━━━━━━━━━━━━━\nWhat do you want to do?', buttons=buttons)
+    
+    elif data == b'start_text_owner_edit':
+        start_text_temp[sender.id] = 'owner'
+        buttons = [[Button.inline('❌ Cancel', b'start_text_owner')]]
+        await event.edit('✏️ Type new start text for Owner:\n\n(Reply to this message)', buttons=buttons)
+    
+    elif data == b'start_text_user_edit':
+        start_text_temp[sender.id] = 'user'
+        buttons = [[Button.inline('❌ Cancel', b'start_text_user')]]
+        await event.edit('✏️ Type new start text for User:\n\n(Reply to this message)', buttons=buttons)
+    
+    elif data == b'start_text_owner_see':
+        await event.edit('👑 OWNER START TEXT\n\n━━━━━━━━━━━━━━━━\n[Current text preview]', buttons=[[Button.inline('⬅️ Back', b'start_text_owner')]])
+    
+    elif data == b'start_text_user_see':
+        await event.edit('👤 USER START TEXT\n\n━━━━━━━━━━━━━━━━\n[Current text preview]', buttons=[[Button.inline('⬅️ Back', b'start_text_user')]])
+    
+    elif data == b'start_text_owner_default':
+        await event.edit('👑 Reset to default Owner start text?\n\n✅ Confirmed', buttons=[[Button.inline('⬅️ Back', b'start_text_owner')]])
+    
+    elif data == b'start_text_user_default':
+        await event.edit('👤 Reset to default User start text?\n\n✅ Confirmed', buttons=[[Button.inline('⬅️ Back', b'start_text_user')]])
     
     elif data == b'setting_sudo_force':
         await event.edit('🔄 Sudo Force: Off\n\n(Coming soon...)', buttons=[[Button.inline('⬅️ Back', b'owner_settings')]])
