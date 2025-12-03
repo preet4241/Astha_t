@@ -27,12 +27,7 @@ def init_db():
             channel_id INTEGER PRIMARY KEY,
             channel_username TEXT UNIQUE,
             channel_title TEXT,
-            channel_link TEXT,
-            added_date TEXT,
-            join_limit INTEGER DEFAULT 0,
-            joined_count INTEGER DEFAULT 0,
-            expiry_date TEXT,
-            is_active INTEGER DEFAULT 1
+            added_date TEXT
         )
     ''')
     
@@ -212,7 +207,7 @@ def get_setting(key, default=''):
     conn.close()
     return result[0] if result else default
 
-def add_channel(channel_username, channel_title, channel_link='', join_limit=0, expiry_date=None):
+def add_channel(channel_username, channel_title):
     """Add required channel"""
     init_db()
     conn = sqlite3.connect(DB_FILE)
@@ -220,9 +215,9 @@ def add_channel(channel_username, channel_title, channel_link='', join_limit=0, 
     
     try:
         cursor.execute('''
-            INSERT INTO channels (channel_username, channel_title, channel_link, added_date, join_limit, expiry_date, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, 1)
-        ''', (channel_username, channel_title, channel_link, datetime.now().isoformat(), join_limit, expiry_date))
+            INSERT INTO channels (channel_username, channel_title, added_date)
+            VALUES (?, ?, ?)
+        ''', (channel_username, channel_title, datetime.now().isoformat()))
         conn.commit()
         result = True
     except sqlite3.IntegrityError:
@@ -249,7 +244,7 @@ def get_all_channels():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    cursor.execute('SELECT channel_id, channel_username, channel_title, channel_link, added_date, join_limit, joined_count, expiry_date, is_active FROM channels ORDER BY added_date DESC')
+    cursor.execute('SELECT channel_id, channel_username, channel_title, added_date FROM channels ORDER BY added_date DESC')
     channels = cursor.fetchall()
     conn.close()
     
@@ -259,12 +254,7 @@ def get_all_channels():
             'channel_id': ch[0],
             'username': ch[1],
             'title': ch[2],
-            'link': ch[3],
-            'added_date': ch[4],
-            'join_limit': ch[5],
-            'joined_count': ch[6],
-            'expiry_date': ch[7],
-            'is_active': ch[8]
+            'added_date': ch[3]
         })
     
     return result
