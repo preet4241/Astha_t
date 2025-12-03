@@ -3,7 +3,8 @@ import os
 import datetime
 from users_db import (
     add_user, get_user, ban_user, unban_user, 
-    get_all_users, get_stats, increment_messages
+    get_all_users, get_stats, increment_messages,
+    set_setting, get_setting
 )
 
 api_id = int(os.getenv('API_ID', '22880380'))
@@ -28,12 +29,39 @@ def get_greeting():
     else:
         return "Good Night"
 
+def get_default_owner_text():
+    """Default owner start text"""
+    return """{greeting} Boss 👑
+
+🤖 Status: 🟢 Active
+👥 Users: {total_users} | ✅ Active: {active_users}
+
+━━━━━━━━━━━━━━━━
+Your Control Desk:"""
+
+def get_default_user_text():
+    """Default user start text"""
+    return """{greeting} {first_name}! 👋
+━━━━━━━━━━━━━━━━
+What would you like to do?"""
+
+def format_text(text, sender, stats):
+    """Format text with placeholders"""
+    return text.format(
+        greeting=get_greeting(),
+        first_name=sender.first_name or 'User',
+        username=sender.username or 'user',
+        user_id=sender.id,
+        total_users=stats['total_users'],
+        active_users=stats['active_users'],
+        banned_users=stats['banned_users']
+    )
+
 @client.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
     sender = await event.get_sender()
     add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
     
-    greeting = get_greeting()
     stats = get_stats()
     
     if sender.id == owner_id:
@@ -42,13 +70,8 @@ async def start_handler(event):
             [Button.inline('👥 Users', b'owner_users'), Button.inline('📢 Broadcast', b'owner_broadcast')],
             [Button.inline('📊 Status', b'owner_status'), Button.inline('⚙️ Settings', b'owner_settings')],
         ]
-        owner_text = f"""{greeting} Boss 👑
-
-🤖 Status: 🟢 Active
-👥 Users: {stats['total_users']} | ✅ Active: {stats['active_users']}
-
-━━━━━━━━━━━━━━━━
-Your Control Desk:"""
+        custom_text = get_setting('owner_start_text', get_default_owner_text())
+        owner_text = format_text(custom_text, sender, stats)
         await event.respond(owner_text, buttons=buttons)
     else:
         buttons = [
@@ -56,9 +79,8 @@ Your Control Desk:"""
             [Button.inline('👤 Profile', b'user_profile'), Button.inline('❓ Help', b'user_help')],
             [Button.inline('ℹ️ About', b'user_about')],
         ]
-        user_text = f"""{greeting} {sender.first_name}! 👋
-━━━━━━━━━━━━━━━━
-What would you like to do?"""
+        custom_text = get_setting('user_start_text', get_default_user_text())
+        user_text = format_text(custom_text, sender, stats)
         await event.respond(user_text, buttons=buttons)
     
     raise events.StopPropagation
@@ -202,24 +224,58 @@ Configure your bot behavior and features:
     elif data == b'start_text_owner_edit':
         start_text_temp[sender.id] = 'owner'
         buttons = [[Button.inline('❌ Cancel', b'start_text_owner')]]
-        await event.edit('✏️ Type new start text for Owner:\n\n(Reply to this message)', buttons=buttons)
+        help_text = """✏️ Type new start text for Owner:
+
+Available placeholders:
+{greeting} - Good Morning/Afternoon/Evening/Night
+{total_users} - Total users count
+{active_users} - Active users count
+{banned_users} - Banned users count
+
+Example:
+{greeting} Boss 👑
+
+Status: Active
+Users: {total_users}"""
+        await event.edit(help_text, buttons=buttons)
     
     elif data == b'start_text_user_edit':
         start_text_temp[sender.id] = 'user'
         buttons = [[Button.inline('❌ Cancel', b'start_text_user')]]
-        await event.edit('✏️ Type new start text for User:\n\n(Reply to this message)', buttons=buttons)
+        help_text = """✏️ Type new start text for User:
+
+Available placeholders:
+{greeting} - Good Morning/Afternoon/Evening/Night
+{first_name} - User's first name
+{username} - User's username
+{user_id} - User's ID
+{total_users} - Total users count
+
+Example:
+{greeting} {first_name}! 👋
+━━━━━━━━━━━━━━━━
+Welcome to our bot!"""
+        await event.edit(help_text, buttons=buttons)
     
     elif data == b'start_text_owner_see':
-        await event.edit('👑 OWNER START TEXT\n\n━━━━━━━━━━━━━━━━\n[Current text preview]', buttons=[[Button.inline('⬅️ Back', b'start_text_owner')]])
+        owner_text = get_setting('owner_start_text', get_default_owner_text())
+        preview = format_text(owner_text, sender, get_stats())
+        see_text = f"👑 OWNER START TEXT\n\n━━━━━━━━━━━━━━━━\n{preview}\n\n━━━━━━━━━━━━━━━━\nAvailable placeholders:\n{{greeting}}, {{first_name}}, {{username}}, {{user_id}}, {{total_users}}, {{active_users}}, {{banned_users}}"
+        await event.edit(see_text, buttons=[[Button.inline('⬅️ Back', b'start_text_owner')]])
     
     elif data == b'start_text_user_see':
-        await event.edit('👤 USER START TEXT\n\n━━━━━━━━━━━━━━━━\n[Current text preview]', buttons=[[Button.inline('⬅️ Back', b'start_text_user')]])
+        user_text = get_setting('user_start_text', get_default_user_text())
+        preview = format_text(user_text, sender, get_stats())
+        see_text = f"👤 USER START TEXT\n\n━━━━━━━━━━━━━━━━\n{preview}\n\n━━━━━━━━━━━━━━━━\nAvailable placeholders:\n{{greeting}}, {{first_name}}, {{username}}, {{user_id}}, {{total_users}}, {{active_users}}, {{banned_users}}"
+        await event.edit(see_text, buttons=[[Button.inline('⬅️ Back', b'start_text_user')]])
     
     elif data == b'start_text_owner_default':
-        await event.edit('👑 Reset to default Owner start text?\n\n✅ Confirmed', buttons=[[Button.inline('⬅️ Back', b'start_text_owner')]])
+        set_setting('owner_start_text', get_default_owner_text())
+        await event.edit('👑 Reset to default Owner start text\n\n✅ Confirmed', buttons=[[Button.inline('⬅️ Back', b'start_text_owner')]])
     
     elif data == b'start_text_user_default':
-        await event.edit('👤 Reset to default User start text?\n\n✅ Confirmed', buttons=[[Button.inline('⬅️ Back', b'start_text_user')]])
+        set_setting('user_start_text', get_default_user_text())
+        await event.edit('👤 Reset to default User start text\n\n✅ Confirmed', buttons=[[Button.inline('⬅️ Back', b'start_text_user')]])
     
     elif data == b'setting_sudo_force':
         await event.edit('🔄 Sudo Force: Off\n\n(Coming soon...)', buttons=[[Button.inline('⬅️ Back', b'owner_settings')]])
@@ -321,7 +377,24 @@ async def time_handler(event):
 async def message_handler(event):
     sender = await event.get_sender()
     
-    if broadcast_temp.get(sender.id):
+    if start_text_temp.get(sender.id):
+        text_type = start_text_temp[sender.id]
+        message = event.text
+        
+        if text_type == 'owner':
+            set_setting('owner_start_text', message)
+            start_text_temp[sender.id] = None
+            preview = format_text(message, sender, get_stats())
+            await event.respond(f"✅ Owner start text saved!\n\nPreview:\n{preview}")
+        elif text_type == 'user':
+            set_setting('user_start_text', message)
+            start_text_temp[sender.id] = None
+            preview = format_text(message, sender, get_stats())
+            await event.respond(f"✅ User start text saved!\n\nPreview:\n{preview}")
+        
+        raise events.StopPropagation
+    
+    elif broadcast_temp.get(sender.id):
         message = event.text
         all_users = get_all_users()
         stats = get_stats()
@@ -356,6 +429,7 @@ async def message_handler(event):
         
         broadcast_temp[sender.id] = False
         await event.respond(f"✅ Broadcast sent!\n\nSent to: {sent_count}\nFailed: {failed_count}")
+        raise events.StopPropagation
     
     elif event.is_private and not event.text.startswith('/'):
         increment_messages(sender.id)
