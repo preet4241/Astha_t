@@ -417,12 +417,14 @@ async def message_handler(event):
             set_setting('owner_start_text', message)
             start_text_temp[sender.id] = None
             preview = format_text(message, sender, get_stats())
-            await event.respond(f"✅ Owner start text saved!\n\nPreview:\n{preview}")
+            buttons = [[Button.inline('⬅️ Back', b'start_text_owner')]]
+            await event.respond(f"✅ Owner start text saved!\n\nPreview:\n{preview}", buttons=buttons)
         elif text_type == 'user':
             set_setting('user_start_text', message)
             start_text_temp[sender.id] = None
             preview = format_text(message, sender, get_stats())
-            await event.respond(f"✅ User start text saved!\n\nPreview:\n{preview}")
+            buttons = [[Button.inline('⬅️ Back', b'start_text_user')]]
+            await event.respond(f"✅ User start text saved!\n\nPreview:\n{preview}", buttons=buttons)
         
         raise events.StopPropagation
     
