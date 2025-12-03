@@ -104,21 +104,16 @@ async def handle_channel_addition(event, sender):
             }
             
             buttons = [[Button.inline('❌ Cancel', b'setting_sub_force')]]
-            msg = f"""✅ Channel Details Fetched!
-
-📌 Channel: {channel_title}
-🔗 Link: {channel_link}
-👤 Username: @{channel_username}
-
-━━━━━━━━━━━━━━━━
-
-➕ ADD CHANNEL - STEP 2/3
-
-📊 How many users must join this channel?
-  • Enter a number (e.g., 100, 500)
-  • Enter 0 for unlimited (∞)
-
-Type the number:"""
+            msg = "✅ Channel Details Fetched!\n\n"
+            msg += f"📌 Channel: {channel_title}\n"
+            msg += f"🔗 Link: {channel_link}\n"
+            msg += f"👤 Username: @{channel_username}\n\n"
+            msg += "━━━━━━━━━━━━━━━━\n\n"
+            msg += "➕ ADD CHANNEL - STEP 2/3\n\n"
+            msg += "📊 How many users must join this channel?\n"
+            msg += "  • Enter a number (e.g., 100, 500)\n"
+            msg += "  • Enter 0 for unlimited (∞)\n\n"
+            msg += "Type the number:"
             await event.respond(msg, buttons=buttons)
             
         except Exception as e:
@@ -139,23 +134,18 @@ Type the number:"""
             
             buttons = [[Button.inline('❌ Cancel', b'setting_sub_force')]]
             limit_text = f"{join_limit} users" if join_limit > 0 else "Unlimited (∞)"
-            await event.respond(f"""✅ Join Limit Set: {limit_text}
-
-━━━━━━━━━━━━━━━━
-
-➕ ADD CHANNEL - STEP 3/3
-
-⏰ Set Time Limit (Optional):
-  • 1d = 1 day
-  • 1w = 1 week
-  • 1m = 1 month
-  • 30min = 30 minutes
-
-  • Enter 0 or 'none' for permanent
-
-Examples: 7d, 2w, 3m, 120min
-
-Type the time duration:""", buttons=buttons)
+            msg = f"✅ Join Limit Set: {limit_text}\n\n"
+            msg += "━━━━━━━━━━━━━━━━\n\n"
+            msg += "➕ ADD CHANNEL - STEP 3/3\n\n"
+            msg += "⏰ Set Time Limit (Optional):\n"
+            msg += "  • 1d = 1 day\n"
+            msg += "  • 1w = 1 week\n"
+            msg += "  • 1m = 1 month\n"
+            msg += "  • 30min = 30 minutes\n\n"
+            msg += "  • Enter 0 or 'none' for permanent\n\n"
+            msg += "Examples: 7d, 2w, 3m, 120min\n\n"
+            msg += "Type the time duration:"
+            await event.respond(msg, buttons=buttons)
             
         except ValueError:
             await event.respond("⚠️ Invalid number! Please enter a valid number.")
@@ -204,19 +194,17 @@ Type the time duration:""", buttons=buttons)
             limit_text = f"{join_limit} users" if join_limit > 0 else "Unlimited (∞)"
             
             buttons = [[Button.inline('⬅️ Back to Settings', b'setting_sub_force')]]
-            await event.respond(f"""✅ CHANNEL ADDED SUCCESSFULLY!
-
-━━━━━━━━━━━━━━━━
-📌 Channel: {title}
-🔗 Link: {link}
-👤 Username: @{username}
-
-📊 Settings:
-  • Join Limit: {limit_text}
-  • Duration: {duration_text}
-
-━━━━━━━━━━━━━━━━
-Users must now join this channel to use the bot!""", buttons=buttons)
+            msg = "✅ CHANNEL ADDED SUCCESSFULLY!\n\n"
+            msg += "━━━━━━━━━━━━━━━━\n"
+            msg += f"📌 Channel: {title}\n"
+            msg += f"🔗 Link: {link}\n"
+            msg += f"👤 Username: @{username}\n\n"
+            msg += "📊 Settings:\n"
+            msg += f"  • Join Limit: {limit_text}\n"
+            msg += f"  • Duration: {duration_text}\n\n"
+            msg += "━━━━━━━━━━━━━━━━\n"
+            msg += "Users must now join this channel to use the bot!"
+            await event.respond(msg, buttons=buttons)
             
             channel_temp[sender.id] = None
             
