@@ -74,6 +74,8 @@ def format_text(text, sender, stats, user=None):
 @client.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
     sender = await event.get_sender()
+    if not sender:
+        return
     add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
     
     user_data = get_user(sender.id)
@@ -107,6 +109,8 @@ async def start_handler(event):
 @client.on(events.CallbackQuery)
 async def callback_handler(event):
     sender = await event.get_sender()
+    if not sender:
+        return
     data = event.data
     
     if sender.id != owner_id:
@@ -516,6 +520,8 @@ async def callback_handler(event):
 @client.on(events.NewMessage)
 async def message_handler(event):
     sender = await event.get_sender()
+    if not sender:
+        return
     
     if channel_action_temp.get(sender.id) == 'add':
         ch_name = None
@@ -715,30 +721,19 @@ async def message_handler(event):
 
 @client.on(events.ChatAction())
 async def chat_action_handler(event):
-    chat = await event.get_chat()
     try:
-        bot_me = await client.get_me()
-        if hasattr(chat, 'id') and event.action_user == bot_me.id and (event.user_joined or event.user_added):
-            grp_id = chat.id
-            grp_name = chat.username or str(chat.id)
-            grp_title = chat.title or 'Unknown'
-            
-            if not group_exists(grp_id):
-                add_group(grp_id, grp_name, grp_title)
-                msg_text = get_setting('group_welcome_text', 'Welcome to group!')
-                msg_text = format_text(msg_text, bot_me, get_stats())
-                buttons = [[Button.inline('Add to List', f'quick_add_group_{grp_id}'.encode())]]
-                await event.respond(msg_text, buttons=buttons)
-        elif event.user_joined and hasattr(chat, 'id'):
-            grp_id = chat.id
-            if group_exists(grp_id):
-                user = await event.get_sender()
-                welcome_msg = get_setting('group_welcome_text', '')
-                if welcome_msg:
-                    msg_text = format_text(welcome_msg, user, get_stats())
-                    await event.respond(msg_text)
+        if event.user_joined:
+            chat = await event.get_chat()
+            user = await event.get_sender()
+            if hasattr(chat, 'id'):
+                grp_id = chat.id
+                if group_exists(grp_id):
+                    welcome_msg = get_setting('group_welcome_text', '')
+                    if welcome_msg:
+                        msg_text = format_text(welcome_msg, user, get_stats())
+                        await event.respond(msg_text)
     except Exception as e:
-        print(f"Error in chat action handler: {e}")
+        pass
     raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern=r'/ban(?:\s+(.+))?'))
