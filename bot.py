@@ -741,41 +741,18 @@ async def message_handler(event):
         await event.respond(result_text, buttons=buttons)
         raise events.StopPropagation
 
-@client.on(events.ChatAction())
-async def chat_action_handler(event):
-    try:
-        chat = await event.get_chat()
-        if hasattr(chat, 'id') and (hasattr(event, 'user_joined') and event.user_joined):
-            grp_id = chat.id
-            grp_name = chat.username or str(chat.id)
-            grp_title = chat.title or 'Unknown'
-            
-            if not group_exists(grp_id):
-                add_group(grp_id, grp_name, grp_title)
-            
-            user = await event.get_sender()
-            if user:
-                # Check for custom welcome message first
-                welcome_msg = get_setting('group_welcome_text', '')
-                if welcome_msg:
-                    msg_text = format_text(welcome_msg, user, get_stats())
-                    await event.respond(msg_text)
-                else:
-                    # Use random default welcome message
-                    user_username = user.username or user.first_name or "user"
-                    random_msg = get_random_welcome_message(user_username, grp_title)
-                    await event.respond(random_msg)
-    except Exception as e:
-        pass
-    raise events.StopPropagation
+joined_users = {}
 
 @client.on(events.NewMessage(incoming=True))
 async def group_message_handler(event):
     try:
         if event.is_group:
             sender = await event.get_sender()
-            
             chat = await event.get_chat()
+            
+            if not sender or not chat:
+                return
+            
             grp_id = chat.id
             grp_name = chat.username or str(chat.id)
             grp_title = chat.title or 'Unknown'
@@ -784,13 +761,26 @@ async def group_message_handler(event):
             if not group_exists(grp_id):
                 add_group(grp_id, grp_name, grp_title)
             
-            # Track user messages (even for anonymous admins, track the group activity)
-            if sender:
-                add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
-                increment_messages(sender.id)
+            # Track user - and send welcome on first message
+            key = f"{grp_id}_{sender.id}"
+            if key not in joined_users:
+                joined_users[key] = True
+                welcome_msg = get_setting('group_welcome_text', '')
+                if welcome_msg:
+                    msg_text = format_text(welcome_msg, sender, get_stats())
+                else:
+                    user_username = sender.username or sender.first_name or "user"
+                    msg_text = get_random_welcome_message(user_username, grp_title)
+                try:
+                    await event.reply(msg_text)
+                except Exception:
+                    pass
+            
+            # Track messages
+            add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
+            increment_messages(sender.id)
     except Exception as e:
-        print(f"Error in group message handler: {e}")
-        pass
+        print(f"Error in group_message_handler: {e}")
 
 async def check_admin_permission(event, sender_id=None):
     """Check if user has admin permission (bot owner, group owner, or group admin or anonymous admin)"""
