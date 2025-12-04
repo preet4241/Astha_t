@@ -76,6 +76,11 @@ async def start_handler(event):
     sender = await event.get_sender()
     add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
     
+    user_data = get_user(sender.id)
+    if user_data and user_data.get('banned'):
+        await event.respond('🚫 You are BANNED from using this bot!')
+        raise events.StopPropagation
+    
     stats = get_stats()
     
     if sender.id == owner_id:
@@ -93,7 +98,6 @@ async def start_handler(event):
             [Button.inline('👤 Profile', b'user_profile'), Button.inline('❓ Help', b'user_help')],
             [Button.inline('ℹ️ About', b'user_about')],
         ]
-        user_data = get_user(sender.id)
         custom_text = get_setting('user_start_text', get_default_user_text())
         user_text = format_text(custom_text, sender, stats, user_data)
         await event.respond(user_text, buttons=buttons)
@@ -105,9 +109,14 @@ async def callback_handler(event):
     sender = await event.get_sender()
     data = event.data
     
-    if sender.id != owner_id and not data.startswith(b'user_'):
-        await event.answer("Owner only!", alert=True)
-        return
+    if sender.id != owner_id:
+        user_data = get_user(sender.id)
+        if user_data and user_data.get('banned'):
+            await event.answer("🚫 You are BANNED!", alert=True)
+            return
+        if not data.startswith(b'user_'):
+            await event.answer("Owner only!", alert=True)
+            return
     
     if data == b'owner_groups':
         groups = get_all_groups()
@@ -612,28 +621,44 @@ async def message_handler(event):
             raise events.StopPropagation
         
         if action == 'ban':
-            ban_user(target_user['user_id'])
-            user_action_type[sender.id] = None
-            result_text = f"✅ User Banned!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
-            buttons = [[Button.inline('🔙 Back', b'owner_users')]]
-            await event.respond(result_text, buttons=buttons)
+            if target_user.get('banned'):
+                await event.respond('❌ This user is already banned!', buttons=[[Button.inline('🔙 Back', b'owner_users')]])
+            else:
+                ban_user(target_user['user_id'])
+                user_action_type[sender.id] = None
+                result_text = f"✅ User Banned!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
+                buttons = [[Button.inline('🔙 Back', b'owner_users')]]
+                await event.respond(result_text, buttons=buttons)
+                try:
+                    await client.send_message(target_user['user_id'], '🚫 You have been BANNED from this bot. You cannot use any commands or features.')
+                except Exception:
+                    pass
         
         elif action == 'unban':
-            unban_user(target_user['user_id'])
-            user_action_type[sender.id] = None
-            result_text = f"✅ User Unbanned!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
-            buttons = [[Button.inline('🔙 Back', b'owner_users')]]
-            await event.respond(result_text, buttons=buttons)
+            if not target_user.get('banned'):
+                await event.respond('❌ This user is not banned!', buttons=[[Button.inline('🔙 Back', b'owner_users')]])
+            else:
+                unban_user(target_user['user_id'])
+                user_action_type[sender.id] = None
+                result_text = f"✅ User Unbanned!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
+                buttons = [[Button.inline('🔙 Back', b'owner_users')]]
+                await event.respond(result_text, buttons=buttons)
+                try:
+                    await client.send_message(target_user['user_id'], '✅ You have been UNBANNED! You can now use the bot again.')
+                except Exception:
+                    pass
         
         elif action == 'info':
             user_action_type[sender.id] = None
             info_text = f"ℹ️ USER DETAILS\n\n"
-            info_text += f"ID: {target_user['user_id']}\n"
-            info_text += f"Username: @{target_user['username']}\n"
-            info_text += f"Name: {target_user['first_name']}\n"
-            info_text += f"Messages: {target_user['messages']}\n"
-            info_text += f"Joined: {target_user['joined'][:10]}\n"
-            info_text += f"Status: {'🚫 BANNED' if target_user['banned'] else '✅ ACTIVE'}\n"
+            info_text += f"👤 ID: {target_user['user_id']}\n"
+            info_text += f"👤 Username: @{target_user['username']}\n"
+            info_text += f"📝 Name: {target_user['first_name']}\n"
+            info_text += f"💬 Messages: {target_user['messages']}\n"
+            info_text += f"📅 Joined: {target_user['joined'][:10]}\n"
+            info_text += f"⏰ Full Join Date: {target_user['joined']}\n"
+            info_text += f"🔄 Status: {'🚫 BANNED' if target_user['banned'] else '✅ ACTIVE'}\n"
+            info_text += f"📊 User Status: {target_user['status']}\n"
             buttons = [[Button.inline('🔙 Back', b'owner_users')]]
             await event.respond(info_text, buttons=buttons)
         
