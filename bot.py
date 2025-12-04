@@ -2,6 +2,7 @@
 from telethon import TelegramClient, events, Button
 import os
 import random
+import asyncio
 from datetime import datetime, timedelta
 from database import (
     add_user, get_user, ban_user, unban_user, 
@@ -772,9 +773,24 @@ async def group_message_handler(event):
                     user_username = sender.username or sender.first_name or "user"
                     msg_text = get_random_welcome_message(user_username, grp_title)
                 try:
-                    await event.reply(msg_text)
-                except Exception:
-                    pass
+                    # Send welcome message
+                    welcome_message = await event.reply(msg_text)
+                    print(f"Welcome message sent to {sender.first_name} in {grp_title}")
+                    
+                    # Schedule deletion after 7 seconds
+                    import asyncio
+                    async def delete_after_delay():
+                        await asyncio.sleep(7)
+                        try:
+                            await welcome_message.delete()
+                            print(f"Welcome message deleted for {sender.first_name}")
+                        except Exception as del_err:
+                            print(f"Could not delete welcome message: {del_err}")
+                    
+                    # Run deletion in background
+                    asyncio.create_task(delete_after_delay())
+                except Exception as send_err:
+                    print(f"Error sending welcome message: {send_err}")
             
             # Track messages
             add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
