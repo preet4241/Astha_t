@@ -23,6 +23,8 @@ channel_action_temp = {}
 channel_page_temp = {}
 group_action_temp = {}
 group_page_temp = {}
+user_action_temp = {}
+user_action_type = {}
 
 def get_greeting():
     hour = datetime.now().hour
@@ -429,7 +431,27 @@ async def callback_handler(event):
         await event.edit(owner_text, buttons=buttons)
     
     elif data == b'owner_users':
-        await event.edit('👥 Users Panel (coming soon...)', buttons=[[Button.inline('🔙 Back', b'owner_back')]])
+        buttons = [
+            [Button.inline('🚫 Ban', b'user_ban'), Button.inline('✅ Unban', b'user_unban')],
+            [Button.inline('ℹ️ Info', b'user_info')],
+            [Button.inline('🔙 Back', b'owner_back')],
+        ]
+        await event.edit('👥 USERS PANEL\n\nChoose an action:', buttons=buttons)
+    
+    elif data == b'user_ban':
+        user_action_type[sender.id] = 'ban'
+        buttons = [[Button.inline('❌ Cancel', b'owner_users')]]
+        await event.edit('🚫 BAN USER\n\nEnter user ID or username (@username):', buttons=buttons)
+    
+    elif data == b'user_unban':
+        user_action_type[sender.id] = 'unban'
+        buttons = [[Button.inline('❌ Cancel', b'owner_users')]]
+        await event.edit('✅ UNBAN USER\n\nEnter user ID or username (@username):', buttons=buttons)
+    
+    elif data == b'user_info':
+        user_action_type[sender.id] = 'info'
+        buttons = [[Button.inline('❌ Cancel', b'owner_users')]]
+        await event.edit('ℹ️ USER INFO\n\nEnter user ID or username (@username):', buttons=buttons)
     
     elif data == b'owner_broadcast':
         buttons = [
@@ -564,6 +586,57 @@ async def message_handler(event):
             group_action_temp[sender.id] = None
             buttons = [[Button.inline('Back', b'owner_groups')]]
             await event.respond(f'Group {grp_name} added successfully!', buttons=buttons)
+        raise events.StopPropagation
+    
+    if user_action_type.get(sender.id):
+        action = user_action_type[sender.id]
+        user_input = event.text.strip()
+        target_user = None
+        
+        if user_input.isdigit():
+            target_user = get_user(int(user_input))
+        elif user_input.startswith('@'):
+            username = user_input[1:]
+            all_users = get_all_users()
+            for uid_str, user in all_users.items():
+                if user.get('username') == username:
+                    target_user = user
+                    break
+        else:
+            await event.respond('Invalid format. Use: user ID or @username', buttons=[[Button.inline('🔙 Back', b'owner_users')]])
+            raise events.StopPropagation
+        
+        if not target_user:
+            await event.respond('❌ User not found!', buttons=[[Button.inline('🔙 Back', b'owner_users')]])
+            user_action_type[sender.id] = None
+            raise events.StopPropagation
+        
+        if action == 'ban':
+            ban_user(target_user['user_id'])
+            user_action_type[sender.id] = None
+            result_text = f"✅ User Banned!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
+            buttons = [[Button.inline('🔙 Back', b'owner_users')]]
+            await event.respond(result_text, buttons=buttons)
+        
+        elif action == 'unban':
+            unban_user(target_user['user_id'])
+            user_action_type[sender.id] = None
+            result_text = f"✅ User Unbanned!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
+            buttons = [[Button.inline('🔙 Back', b'owner_users')]]
+            await event.respond(result_text, buttons=buttons)
+        
+        elif action == 'info':
+            user_action_type[sender.id] = None
+            info_text = f"ℹ️ USER DETAILS\n\n"
+            info_text += f"ID: {target_user['user_id']}\n"
+            info_text += f"Username: @{target_user['username']}\n"
+            info_text += f"Name: {target_user['first_name']}\n"
+            info_text += f"Messages: {target_user['messages']}\n"
+            info_text += f"Joined: {target_user['joined'][:10]}\n"
+            info_text += f"Status: {'🚫 BANNED' if target_user['banned'] else '✅ ACTIVE'}\n"
+            buttons = [[Button.inline('🔙 Back', b'owner_users')]]
+            await event.respond(info_text, buttons=buttons)
+        
         raise events.StopPropagation
     
     if start_text_temp.get(sender.id):
