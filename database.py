@@ -338,9 +338,22 @@ def remove_group(group_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    cursor.execute('UPDATE groups SET is_active = 0 WHERE group_id = ?', (group_id,))
-    conn.commit()
-    conn.close()
+    try:
+        cursor.execute('UPDATE groups SET is_active = 0 WHERE group_id = ?', (group_id,))
+        conn.commit()
+    except Exception as e:
+        print(f"Error updating group active status: {e}")
+        # Try adding column if it doesn't exist
+        try:
+            cursor.execute('ALTER TABLE groups ADD COLUMN is_active INTEGER DEFAULT 1')
+            conn.commit()
+            cursor.execute('UPDATE groups SET is_active = 0 WHERE group_id = ?', (group_id,))
+            conn.commit()
+        except Exception as e2:
+            print(f"Error adding is_active column: {e2}")
+    finally:
+        conn.close()
+    
     return True
 
 def is_group_active(group_id):
@@ -349,13 +362,18 @@ def is_group_active(group_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    cursor.execute('SELECT is_active FROM groups WHERE group_id = ?', (group_id,))
-    result = cursor.fetchone()
-    conn.close()
-    
-    if result:
-        return result[0] == 1
-    return False
+    try:
+        cursor.execute('SELECT is_active FROM groups WHERE group_id = ?', (group_id,))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            return result[0] == 1
+        return False
+    except Exception as e:
+        # If column doesn't exist, assume all groups are active
+        conn.close()
+        return True
 
 def get_all_groups():
     """Get all groups"""
