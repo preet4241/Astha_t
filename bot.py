@@ -61,17 +61,10 @@ def get_default_welcome_messages():
     ]
 
 def get_random_welcome_message(username, group_name):
-    """Get a random welcome message from both default and custom messages"""
+    """Get a random welcome message - always picks a different random message"""
     messages = get_default_welcome_messages()
     
-    # Get custom welcome message from settings
-    custom_msg = get_setting('group_welcome_text', '')
-    
-    # If custom message exists, add it to the list
-    if custom_msg and custom_msg.strip():
-        messages.append(custom_msg)
-    
-    # Select random message
+    # Always pick from default random messages
     selected = random.choice(messages)
     return selected.format(username=username, group_name=group_name)
 
