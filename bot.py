@@ -217,7 +217,10 @@ async def callback_handler(event):
             if total_pages > 1:
                 buttons.append([Button.inline(f'➡️ Next (1/{total_pages})', b'group_remove_next')])
             buttons.append([Button.inline('🔙 Back', b'owner_groups')])
-            await event.edit('REMOVE GROUP\n\nSelect group to remove:', buttons=buttons)
+            try:
+                await event.edit('REMOVE GROUP\n\nSelect group to remove:', buttons=buttons)
+            except:
+                await event.answer('✅ Group removed!')
     
     elif data == b'group_remove_next':
         groups = get_all_groups()
@@ -287,7 +290,10 @@ async def callback_handler(event):
             if total_pages > 1:
                 buttons.append([Button.inline(f'➡️ Next (1/{total_pages})', b'group_remove_next')])
             buttons.append([Button.inline('🔙 Back', b'owner_groups')])
-            await event.edit('REMOVE GROUP\n\nSelect group to remove:', buttons=buttons)
+            try:
+                await event.edit('REMOVE GROUP\n\nSelect group to remove:', buttons=buttons)
+            except:
+                await event.answer('✅ Group removed!')
     
     elif data.startswith(b'show_grp_'):
         group_id = int(data.split(b'_')[2])
