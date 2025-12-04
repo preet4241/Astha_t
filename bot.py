@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from telethon import TelegramClient, events, Button
 import os
+import random
 from datetime import datetime, timedelta
 from database import (
     add_user, get_user, ban_user, unban_user, 
@@ -42,6 +43,27 @@ def get_default_owner_text():
 
 def get_default_user_text():
     return "{greeting} {first_name}!\n\nWhat would you like to do?"
+
+def get_default_welcome_messages():
+    """Return list of default welcome messages for groups"""
+    return [
+        "Welcome to the hall of fame, @{username}! {group_name} honors you! 🏛️",
+        "🎉 A warm welcome to @{username}! {group_name} is now more awesome with you here!",
+        "🌟 Welcome aboard, @{username}! {group_name} welcomes you with open arms!",
+        "👋 Hey @{username}! {group_name} is thrilled to have you join us!",
+        "🎊 Welcome to paradise, @{username}! {group_name} just got better!",
+        "✨ Greetings @{username}! {group_name} is honored by your presence!",
+        "🎭 Welcome to the show, @{username}! {group_name} is ready to entertain you!",
+        "🚀 Blast off into @{username}! {group_name} is taking you on an epic journey!",
+        "💎 Welcome precious member @{username}! {group_name} treasures your arrival!",
+        "🎪 Step right up, @{username}! {group_name} welcomes you to the greatest show!"
+    ]
+
+def get_random_welcome_message(username, group_name):
+    """Get a random welcome message"""
+    messages = get_default_welcome_messages()
+    selected = random.choice(messages)
+    return selected.format(username=username, group_name=group_name)
 
 def format_text(text, sender, stats, user=None):
     current_date = datetime.now().strftime("%d-%m-%Y")
@@ -164,8 +186,8 @@ async def callback_handler(event):
         await event.edit('Group welcome text removed!', buttons=[[Button.inline('🔙 Back', b'group_welcome_text')]])
     
     elif data == b'group_welcome_text_default':
-        set_setting('group_welcome_text', 'Welcome to group!')
-        await event.edit('Group welcome text reset to default!', buttons=[[Button.inline('🔙 Back', b'group_welcome_text')]])
+        set_setting('group_welcome_text', '')
+        await event.edit('Group welcome text reset to random default messages!', buttons=[[Button.inline('🔙 Back', b'group_welcome_text')]])
     
     elif data == b'group_add':
         group_action_temp[sender.id] = 'add'
@@ -733,10 +755,16 @@ async def chat_action_handler(event):
             
             user = await event.get_sender()
             if user:
+                # Check for custom welcome message first
                 welcome_msg = get_setting('group_welcome_text', '')
                 if welcome_msg:
                     msg_text = format_text(welcome_msg, user, get_stats())
                     await event.respond(msg_text)
+                else:
+                    # Use random default welcome message
+                    user_username = user.username or user.first_name or "user"
+                    random_msg = get_random_welcome_message(user_username, grp_title)
+                    await event.respond(random_msg)
     except Exception as e:
         pass
     raise events.StopPropagation
@@ -756,13 +784,6 @@ async def group_message_handler(event):
             
             if not group_exists(grp_id):
                 add_group(grp_id, grp_name, grp_title)
-                welcome_msg = get_setting('group_welcome_text', '')
-                if welcome_msg:
-                    msg_text = format_text(welcome_msg, sender, get_stats())
-                    try:
-                        await event.respond(msg_text)
-                    except Exception:
-                        pass
     except Exception as e:
         pass
 
@@ -780,13 +801,26 @@ async def check_admin_permission(event, sender_id):
     if event.is_group:
         try:
             chat = await event.get_chat()
-            participant = await client.get_permissions(chat, sender_id)
+            
+            # Handle anonymous admins - check event.sender_id instead
+            actual_sender_id = sender_id
+            if hasattr(event, 'sender_id') and event.sender_id:
+                actual_sender_id = event.sender_id
+            
+            participant = await client.get_permissions(chat, actual_sender_id)
             
             # Check if user is creator or admin
             if participant.is_creator or participant.is_admin:
                 return True
         except Exception as e:
             print(f"Error checking permissions: {e}")
+            # If error, try to check if sender is anonymous admin (1087968824 is Telegram's anonymous admin ID)
+            try:
+                if sender_id == 1087968824 or (hasattr(event, 'sender_id') and event.sender_id == 1087968824):
+                    # Anonymous admin detected
+                    return True
+            except:
+                pass
             return False
     
     return False
