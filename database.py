@@ -313,19 +313,34 @@ def check_channel_limits():
     conn.close()
 
 def add_group(group_id, group_username, group_title):
-    """Add group"""
+    """Add group or reactivate if already exists"""
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
     try:
-        cursor.execute('''
-            INSERT INTO groups (group_id, group_username, group_title, added_date)
-            VALUES (?, ?, ?, ?)
-        ''', (group_id, group_username, group_title, datetime.now().isoformat()))
+        # Check if group exists (even if inactive)
+        cursor.execute('SELECT is_active FROM groups WHERE group_id = ?', (group_id,))
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Group exists, reactivate it
+            cursor.execute('''
+                UPDATE groups 
+                SET is_active = 1, group_username = ?, group_title = ?, added_date = ?
+                WHERE group_id = ?
+            ''', (group_username, group_title, datetime.now().isoformat(), group_id))
+        else:
+            # New group, insert it
+            cursor.execute('''
+                INSERT INTO groups (group_id, group_username, group_title, added_date, is_active)
+                VALUES (?, ?, ?, ?, 1)
+            ''', (group_id, group_username, group_title, datetime.now().isoformat()))
+        
         conn.commit()
         result = True
-    except sqlite3.IntegrityError:
+    except Exception as e:
+        print(f"Error adding/reactivating group: {e}")
         result = False
     finally:
         conn.close()

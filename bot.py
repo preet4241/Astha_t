@@ -104,6 +104,13 @@ def format_text(text, sender, stats, user=None):
 
 @client.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
+    # Check if in group and group is removed
+    if event.is_group:
+        chat = await event.get_chat()
+        if not is_group_active(chat.id):
+            print(f"[LOG] ⏭️ /start ignored - Group {chat.title} is removed")
+            raise events.StopPropagation
+    
     sender = await event.get_sender()
     if not sender:
         print(f"[LOG] ⚠️ /start received but no sender info")
@@ -1222,12 +1229,24 @@ async def info_handler(event):
 
 @client.on(events.NewMessage(pattern='/hello'))
 async def hello_handler(event):
+    # Check if in removed group
+    if event.is_group:
+        chat = await event.get_chat()
+        if not is_group_active(chat.id):
+            raise events.StopPropagation
+    
     sender = await event.get_sender()
     await event.respond(f'Hello {sender.first_name}!')
     raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern='/time'))
 async def time_handler(event):
+    # Check if in removed group
+    if event.is_group:
+        chat = await event.get_chat()
+        if not is_group_active(chat.id):
+            raise events.StopPropagation
+    
     current_time = datetime.now().strftime("%H:%M:%S")
     await event.respond(f'Current time: {current_time}')
     raise events.StopPropagation
