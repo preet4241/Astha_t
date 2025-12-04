@@ -742,8 +742,6 @@ async def message_handler(event):
         await event.respond(result_text, buttons=buttons)
         raise events.StopPropagation
 
-joined_users = {}
-
 @client.on(events.ChatAction)
 async def member_joined_handler(event):
     """Handle new members joining the group"""
@@ -775,11 +773,7 @@ async def member_joined_handler(event):
             # Add user to database
             add_user(user.id, user.username or 'unknown', user.first_name or 'User')
             
-            # Mark user as welcomed in this group
-            key = f"{grp_id}_{user.id}"
-            joined_users[key] = True
-            
-            # Get welcome message
+            # Get welcome message - ALWAYS send random message on join
             welcome_msg = get_setting('group_welcome_text', '')
             if welcome_msg:
                 msg_text = format_text(welcome_msg, user, get_stats())
@@ -787,16 +781,16 @@ async def member_joined_handler(event):
             else:
                 user_username = user.username or user.first_name or "user"
                 msg_text = get_random_welcome_message(user_username, grp_title)
-                print(f"[LOG] Using random welcome message")
+                print(f"[LOG] Using random welcome message: {msg_text[:50]}...")
             
             try:
                 # Send welcome message
                 welcome_message = await client.send_message(chat, msg_text)
                 print(f"[LOG] ✅ Welcome message sent to {user.first_name} in {grp_title}")
                 
-                # Schedule deletion after 15 seconds
+                # Schedule deletion after 7 seconds
                 async def delete_after_delay():
-                    await asyncio.sleep(15)
+                    await asyncio.sleep(7)
                     try:
                         await welcome_message.delete()
                         print(f"[LOG] 🗑️ Welcome message deleted for {user.first_name} in {grp_title}")
