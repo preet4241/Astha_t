@@ -741,6 +741,153 @@ async def chat_action_handler(event):
         print(f"Error in chat action handler: {e}")
     raise events.StopPropagation
 
+@client.on(events.NewMessage(pattern=r'/ban(?:\s+(.+))?'))
+async def ban_handler(event):
+    sender = await event.get_sender()
+    if sender.id != owner_id:
+        await event.respond('🔐 Owner only!')
+        raise events.StopPropagation
+    
+    target_user = None
+    match = event.pattern_match
+    
+    if event.reply_to_msg_id:
+        reply_msg = await event.get_reply_message()
+        if reply_msg and reply_msg.from_id:
+            target_user = get_user(reply_msg.from_id)
+    elif match.group(1):
+        user_input = match.group(1).strip()
+        if user_input.isdigit():
+            target_user = get_user(int(user_input))
+        elif user_input.startswith('@'):
+            username = user_input[1:]
+            all_users = get_all_users()
+            for uid_str, user in all_users.items():
+                if user.get('username') == username:
+                    target_user = user
+                    break
+        else:
+            await event.respond('❌ Invalid format. Use: `/ban <user_id>` or `/ban @username` or reply with `/ban`')
+            raise events.StopPropagation
+    else:
+        await event.respond('❌ No user specified. Use: `/ban <user_id>` or `/ban @username` or reply with `/ban`')
+        raise events.StopPropagation
+    
+    if not target_user:
+        await event.respond('❌ User not found!')
+        raise events.StopPropagation
+    
+    if target_user.get('banned'):
+        await event.respond('❌ This user is already banned!')
+    else:
+        ban_user(target_user['user_id'])
+        result_text = f"✅ User Banned!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
+        await event.respond(result_text)
+        try:
+            await client.send_message(target_user['user_id'], '🚫 You have been BANNED from this bot. You cannot use any commands or features.')
+        except Exception:
+            pass
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'/unban(?:\s+(.+))?'))
+async def unban_handler(event):
+    sender = await event.get_sender()
+    if sender.id != owner_id:
+        await event.respond('🔐 Owner only!')
+        raise events.StopPropagation
+    
+    target_user = None
+    match = event.pattern_match
+    
+    if event.reply_to_msg_id:
+        reply_msg = await event.get_reply_message()
+        if reply_msg and reply_msg.from_id:
+            target_user = get_user(reply_msg.from_id)
+    elif match.group(1):
+        user_input = match.group(1).strip()
+        if user_input.isdigit():
+            target_user = get_user(int(user_input))
+        elif user_input.startswith('@'):
+            username = user_input[1:]
+            all_users = get_all_users()
+            for uid_str, user in all_users.items():
+                if user.get('username') == username:
+                    target_user = user
+                    break
+        else:
+            await event.respond('❌ Invalid format. Use: `/unban <user_id>` or `/unban @username` or reply with `/unban`')
+            raise events.StopPropagation
+    else:
+        await event.respond('❌ No user specified. Use: `/unban <user_id>` or `/unban @username` or reply with `/unban`')
+        raise events.StopPropagation
+    
+    if not target_user:
+        await event.respond('❌ User not found!')
+        raise events.StopPropagation
+    
+    if not target_user.get('banned'):
+        await event.respond('❌ This user is not banned!')
+    else:
+        unban_user(target_user['user_id'])
+        result_text = f"✅ User Unbanned!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
+        await event.respond(result_text)
+        try:
+            await client.send_message(target_user['user_id'], '✅ You have been UNBANNED! You can now use the bot again.')
+        except Exception:
+            pass
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'/info(?:\s+(.+))?'))
+async def info_handler(event):
+    sender = await event.get_sender()
+    if sender.id != owner_id:
+        await event.respond('🔐 Owner only!')
+        raise events.StopPropagation
+    
+    target_user = None
+    match = event.pattern_match
+    
+    if event.reply_to_msg_id:
+        reply_msg = await event.get_reply_message()
+        if reply_msg and reply_msg.from_id:
+            target_user = get_user(reply_msg.from_id)
+    elif match.group(1):
+        user_input = match.group(1).strip()
+        if user_input.isdigit():
+            target_user = get_user(int(user_input))
+        elif user_input.startswith('@'):
+            username = user_input[1:]
+            all_users = get_all_users()
+            for uid_str, user in all_users.items():
+                if user.get('username') == username:
+                    target_user = user
+                    break
+        else:
+            await event.respond('❌ Invalid format. Use: `/info <user_id>` or `/info @username` or reply with `/info`')
+            raise events.StopPropagation
+    else:
+        await event.respond('❌ No user specified. Use: `/info <user_id>` or `/info @username` or reply with `/info`')
+        raise events.StopPropagation
+    
+    if not target_user:
+        await event.respond('❌ User not found!')
+        raise events.StopPropagation
+    
+    info_text = f"ℹ️ USER DETAILS\n\n"
+    info_text += f"👤 ID: {target_user['user_id']}\n"
+    info_text += f"👤 Username: @{target_user['username']}\n"
+    info_text += f"📝 Name: {target_user['first_name']}\n"
+    info_text += f"💬 Messages: {target_user['messages']}\n"
+    info_text += f"📅 Joined: {target_user['joined'][:10]}\n"
+    info_text += f"⏰ Full Join Date: {target_user['joined']}\n"
+    info_text += f"🔄 Status: {'🚫 BANNED' if target_user['banned'] else '✅ ACTIVE'}\n"
+    info_text += f"📊 User Status: {target_user['status']}\n"
+    await event.respond(info_text)
+    
+    raise events.StopPropagation
+
 @client.on(events.NewMessage(pattern='/hello'))
 async def hello_handler(event):
     sender = await event.get_sender()
