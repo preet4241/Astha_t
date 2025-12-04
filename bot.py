@@ -766,30 +766,65 @@ async def group_message_handler(event):
     except Exception as e:
         pass
 
+async def check_admin_permission(event, sender_id):
+    """Check if user has admin permission (bot owner, group owner, or group admin)"""
+    # Bot owner has permission everywhere
+    if sender_id == owner_id:
+        return True
+    
+    # In private chat, only bot owner allowed
+    if event.is_private:
+        return False
+    
+    # In group, check if user is group owner or admin
+    if event.is_group:
+        try:
+            chat = await event.get_chat()
+            participant = await client.get_permissions(chat, sender_id)
+            
+            # Check if user is creator or admin
+            if participant.is_creator or participant.is_admin:
+                return True
+        except Exception as e:
+            print(f"Error checking permissions: {e}")
+            return False
+    
+    return False
+
 @client.on(events.NewMessage(pattern=r'/ban(?:\s+(.+))?'))
 async def ban_handler(event):
     sender = await event.get_sender()
-    if not sender or sender.id != owner_id:
-        await event.respond('🔐 Owner only!')
+    if not sender:
         raise events.StopPropagation
     
+    # Check admin permission
+    has_permission = await check_admin_permission(event, sender.id)
+    if not has_permission:
+        await event.respond('🔐 Only bot owner or group admins can use this command!')
+        raise events.StopPropagation
+    
+    # Get target user
+    target_user_id = None
     target_user = None
     match = event.pattern_match
     
     if event.reply_to_msg_id:
         reply_msg = await event.get_reply_message()
         if reply_msg and reply_msg.from_id:
-            target_user = get_user(reply_msg.from_id)
+            target_user_id = reply_msg.from_id.user_id
+            target_user = get_user(target_user_id)
     elif match.group(1):
         user_input = match.group(1).strip()
         if user_input.isdigit():
-            target_user = get_user(int(user_input))
+            target_user_id = int(user_input)
+            target_user = get_user(target_user_id)
         elif user_input.startswith('@'):
             username = user_input[1:]
             all_users = get_all_users()
             for uid_str, user in all_users.items():
                 if user.get('username') == username:
                     target_user = user
+                    target_user_id = user['user_id']
                     break
         else:
             await event.respond('❌ Invalid format. Use: `/ban <user_id>` or `/ban @username` or reply with `/ban`')
@@ -798,18 +833,35 @@ async def ban_handler(event):
         await event.respond('❌ No user specified. Use: `/ban <user_id>` or `/ban @username` or reply with `/ban`')
         raise events.StopPropagation
     
+    # In group, verify target user is in the same group
+    if event.is_group:
+        try:
+            chat = await event.get_chat()
+            target_in_group = await client.get_permissions(chat, target_user_id)
+            if not target_in_group:
+                await event.respond('❌ User not found in this group!')
+                raise events.StopPropagation
+        except Exception as e:
+            await event.respond('❌ User not found in this group!')
+            raise events.StopPropagation
+    
     if not target_user:
-        await event.respond('❌ User not found!')
+        await event.respond('❌ User not found in bot database!')
         raise events.StopPropagation
     
     if target_user.get('banned'):
         await event.respond('❌ This user is already banned!')
     else:
         ban_user(target_user['user_id'])
-        result_text = f"✅ User Banned!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
+        group_name = ""
+        if event.is_group:
+            chat = await event.get_chat()
+            group_name = f" in {chat.title}"
+        
+        result_text = f"✅ User Banned{group_name}!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
         await event.respond(result_text)
         try:
-            await client.send_message(target_user['user_id'], '🚫 You have been BANNED from this bot. You cannot use any commands or features.')
+            await client.send_message(target_user['user_id'], f'🚫 You have been BANNED{group_name}.')
         except Exception:
             pass
     
@@ -818,27 +870,37 @@ async def ban_handler(event):
 @client.on(events.NewMessage(pattern=r'/unban(?:\s+(.+))?'))
 async def unban_handler(event):
     sender = await event.get_sender()
-    if not sender or sender.id != owner_id:
-        await event.respond('🔐 Owner only!')
+    if not sender:
         raise events.StopPropagation
     
+    # Check admin permission
+    has_permission = await check_admin_permission(event, sender.id)
+    if not has_permission:
+        await event.respond('🔐 Only bot owner or group admins can use this command!')
+        raise events.StopPropagation
+    
+    # Get target user
+    target_user_id = None
     target_user = None
     match = event.pattern_match
     
     if event.reply_to_msg_id:
         reply_msg = await event.get_reply_message()
         if reply_msg and reply_msg.from_id:
-            target_user = get_user(reply_msg.from_id)
+            target_user_id = reply_msg.from_id.user_id
+            target_user = get_user(target_user_id)
     elif match.group(1):
         user_input = match.group(1).strip()
         if user_input.isdigit():
-            target_user = get_user(int(user_input))
+            target_user_id = int(user_input)
+            target_user = get_user(target_user_id)
         elif user_input.startswith('@'):
             username = user_input[1:]
             all_users = get_all_users()
             for uid_str, user in all_users.items():
                 if user.get('username') == username:
                     target_user = user
+                    target_user_id = user['user_id']
                     break
         else:
             await event.respond('❌ Invalid format. Use: `/unban <user_id>` or `/unban @username` or reply with `/unban`')
@@ -847,18 +909,35 @@ async def unban_handler(event):
         await event.respond('❌ No user specified. Use: `/unban <user_id>` or `/unban @username` or reply with `/unban`')
         raise events.StopPropagation
     
+    # In group, verify target user is in the same group
+    if event.is_group:
+        try:
+            chat = await event.get_chat()
+            target_in_group = await client.get_permissions(chat, target_user_id)
+            if not target_in_group:
+                await event.respond('❌ User not found in this group!')
+                raise events.StopPropagation
+        except Exception as e:
+            await event.respond('❌ User not found in this group!')
+            raise events.StopPropagation
+    
     if not target_user:
-        await event.respond('❌ User not found!')
+        await event.respond('❌ User not found in bot database!')
         raise events.StopPropagation
     
     if not target_user.get('banned'):
         await event.respond('❌ This user is not banned!')
     else:
         unban_user(target_user['user_id'])
-        result_text = f"✅ User Unbanned!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
+        group_name = ""
+        if event.is_group:
+            chat = await event.get_chat()
+            group_name = f" in {chat.title}"
+        
+        result_text = f"✅ User Unbanned{group_name}!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
         await event.respond(result_text)
         try:
-            await client.send_message(target_user['user_id'], '✅ You have been UNBANNED! You can now use the bot again.')
+            await client.send_message(target_user['user_id'], f'✅ You have been UNBANNED{group_name}!')
         except Exception:
             pass
     
@@ -867,27 +946,37 @@ async def unban_handler(event):
 @client.on(events.NewMessage(pattern=r'/info(?:\s+(.+))?'))
 async def info_handler(event):
     sender = await event.get_sender()
-    if not sender or sender.id != owner_id:
-        await event.respond('🔐 Owner only!')
+    if not sender:
         raise events.StopPropagation
     
+    # Check admin permission
+    has_permission = await check_admin_permission(event, sender.id)
+    if not has_permission:
+        await event.respond('🔐 Only bot owner or group admins can use this command!')
+        raise events.StopPropagation
+    
+    # Get target user
+    target_user_id = None
     target_user = None
     match = event.pattern_match
     
     if event.reply_to_msg_id:
         reply_msg = await event.get_reply_message()
         if reply_msg and reply_msg.from_id:
-            target_user = get_user(reply_msg.from_id)
+            target_user_id = reply_msg.from_id.user_id
+            target_user = get_user(target_user_id)
     elif match.group(1):
         user_input = match.group(1).strip()
         if user_input.isdigit():
-            target_user = get_user(int(user_input))
+            target_user_id = int(user_input)
+            target_user = get_user(target_user_id)
         elif user_input.startswith('@'):
             username = user_input[1:]
             all_users = get_all_users()
             for uid_str, user in all_users.items():
                 if user.get('username') == username:
                     target_user = user
+                    target_user_id = user['user_id']
                     break
         else:
             await event.respond('❌ Invalid format. Use: `/info <user_id>` or `/info @username` or reply with `/info`')
@@ -896,8 +985,20 @@ async def info_handler(event):
         await event.respond('❌ No user specified. Use: `/info <user_id>` or `/info @username` or reply with `/info`')
         raise events.StopPropagation
     
+    # In group, verify target user is in the same group
+    if event.is_group:
+        try:
+            chat = await event.get_chat()
+            target_in_group = await client.get_permissions(chat, target_user_id)
+            if not target_in_group:
+                await event.respond('❌ User not found in this group!')
+                raise events.StopPropagation
+        except Exception as e:
+            await event.respond('❌ User not found in this group!')
+            raise events.StopPropagation
+    
     if not target_user:
-        await event.respond('❌ User not found!')
+        await event.respond('❌ User not found in bot database!')
         raise events.StopPropagation
     
     info_text = f"ℹ️ USER DETAILS\n\n"
@@ -909,6 +1010,11 @@ async def info_handler(event):
     info_text += f"⏰ Full Join Date: {target_user['joined']}\n"
     info_text += f"🔄 Status: {'🚫 BANNED' if target_user['banned'] else '✅ ACTIVE'}\n"
     info_text += f"📊 User Status: {target_user['status']}\n"
+    
+    if event.is_group:
+        chat = await event.get_chat()
+        info_text += f"\n📍 Group: {chat.title}"
+    
     await event.respond(info_text)
     
     raise events.StopPropagation
