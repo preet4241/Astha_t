@@ -98,17 +98,22 @@ def format_text(text, sender, stats, user=None):
 async def start_handler(event):
     sender = await event.get_sender()
     if not sender:
+        print(f"[LOG] ⚠️ /start received but no sender info")
         return
+    
+    print(f"[LOG] 🚀 /start command from {sender.first_name} (@{sender.username or 'no_username'}) ID: {sender.id}")
     add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
     
     user_data = get_user(sender.id)
     if user_data and user_data.get('banned'):
+        print(f"[LOG] 🚫 Banned user {sender.id} tried to use /start")
         await event.respond('🚫 You are BANNED from using this bot!')
         raise events.StopPropagation
     
     stats = get_stats()
     
     if sender.id == owner_id:
+        print(f"[LOG] 👑 Owner {sender.id} accessed bot")
         buttons = [
             [Button.inline('🛠️ Tools', b'owner_tools')],
             [Button.inline('👥 Users', b'owner_users'), Button.inline('📢 Broadcast', b'owner_broadcast')],
@@ -723,6 +728,7 @@ async def message_handler(event):
         all_users = get_all_users()
         stats = get_stats()
         
+        print(f"[LOG] 📢 Starting broadcast to {len(all_users)} users")
         sent_count = 0
         failed_count = 0
         
@@ -733,14 +739,19 @@ async def message_handler(event):
             try:
                 await client.send_message(int(user_id_str), message)
                 sent_count += 1
-            except Exception:
+            except Exception as e:
                 failed_count += 1
+                print(f"[LOG] ❌ Broadcast failed to user {user_id_str}: {e}")
         
+        print(f"[LOG] ✅ Broadcast complete: {sent_count} sent, {failed_count} failed")
         broadcast_temp[sender.id] = False
         result_text = f"Broadcast Complete!\n\nSent: {sent_count}\nFailed: {failed_count}"
         buttons = [[Button.inline('Back', b'owner_back')]]
         await event.respond(result_text, buttons=buttons)
         raise events.StopPropagation
+
+# Track processed join events to avoid duplicates
+processed_joins = {}
 
 @client.on(events.ChatAction)
 async def member_joined_handler(event):
@@ -749,51 +760,70 @@ async def member_joined_handler(event):
         if event.user_joined or event.user_added:
             chat = await event.get_chat()
             if not chat:
+                print(f"[LOG] ⚠️ Could not get chat info in member_joined_handler")
                 return
             
             grp_id = chat.id
             grp_name = chat.username or str(chat.id)
             grp_title = chat.title or 'Unknown Group'
             
-            print(f"[LOG] New member joined event in {grp_title} (ID: {grp_id})")
+            # Get the user who joined
+            user = await event.get_user()
+            if not user:
+                print(f"[LOG] ⚠️ Could not get user info for join event in {grp_title}")
+                return
+            
+            # Create unique key to prevent duplicate processing
+            join_key = f"{grp_id}_{user.id}_{int(datetime.now().timestamp())}"
+            
+            # Check if we already processed this join in last 3 seconds
+            current_time = datetime.now().timestamp()
+            for key, timestamp in list(processed_joins.items()):
+                if current_time - timestamp > 3:
+                    del processed_joins[key]
+            
+            # Check if similar join was recently processed
+            similar_key = f"{grp_id}_{user.id}"
+            if any(k.startswith(similar_key) for k in processed_joins.keys()):
+                print(f"[LOG] ⏭️ Skipping duplicate join event for {user.first_name} in {grp_title}")
+                return
+            
+            # Mark as processed
+            processed_joins[join_key] = current_time
+            
+            print(f"[LOG] 👤 New member joined: {user.first_name} (@{user.username or 'no_username'}) ID: {user.id}")
+            print(f"[LOG] 📍 Group: {grp_title} (ID: {grp_id})")
             
             # Add group to database if not exists
             if not group_exists(grp_id):
                 add_group(grp_id, grp_name, grp_title)
-                print(f"[LOG] Group {grp_title} added to database")
-            
-            # Get the user who joined
-            user = await event.get_user()
-            if not user:
-                print(f"[LOG] Could not get user info for join event")
-                return
-            
-            print(f"[LOG] User joined: {user.first_name} (@{user.username or 'no_username'}) ID: {user.id}")
+                print(f"[LOG] ✅ Group '{grp_title}' added to database")
             
             # Add user to database
             add_user(user.id, user.username or 'unknown', user.first_name or 'User')
+            print(f"[LOG] ✅ User '{user.first_name}' added/updated in database")
             
             # Get welcome message - ALWAYS send random message on join
             welcome_msg = get_setting('group_welcome_text', '')
             if welcome_msg:
                 msg_text = format_text(welcome_msg, user, get_stats())
-                print(f"[LOG] Using custom welcome message")
+                print(f"[LOG] 📝 Using custom welcome message")
             else:
                 user_username = user.username or user.first_name or "user"
                 msg_text = get_random_welcome_message(user_username, grp_title)
-                print(f"[LOG] Using random welcome message: {msg_text[:50]}...")
+                print(f"[LOG] 🎲 Random welcome message selected")
             
             try:
                 # Send welcome message
                 welcome_message = await client.send_message(chat, msg_text)
                 print(f"[LOG] ✅ Welcome message sent to {user.first_name} in {grp_title}")
                 
-                # Schedule deletion after 7 seconds
+                # Schedule deletion after 15 seconds
                 async def delete_after_delay():
-                    await asyncio.sleep(7)
+                    await asyncio.sleep(15)
                     try:
                         await welcome_message.delete()
-                        print(f"[LOG] 🗑️ Welcome message deleted for {user.first_name} in {grp_title}")
+                        print(f"[LOG] 🗑️ Welcome message auto-deleted for {user.first_name} in {grp_title}")
                     except Exception as del_err:
                         print(f"[LOG] ❌ Could not delete welcome message: {del_err}")
                 
@@ -822,7 +852,7 @@ async def group_message_handler(event):
             # Add group to database if not exists
             if not group_exists(grp_id):
                 add_group(grp_id, grp_name, grp_title)
-                print(f"[LOG] Group {grp_title} auto-added from message")
+                print(f"[LOG] ✅ Group '{grp_title}' auto-added from message")
             
             # Track messages
             add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
@@ -882,10 +912,12 @@ async def ban_handler(event):
     sender = await event.get_sender()
     sender_id = sender.id if sender else None
     
-    # Debug: Check what we're getting
-    print(f"BAN CMD: sender={sender}, from_id={event.from_id if hasattr(event, 'from_id') else 'N/A'}")
-    if event.message:
-        print(f"BAN CMD: message.from_id={event.message.from_id if hasattr(event.message, 'from_id') else 'N/A'}")
+    print(f"[LOG] 🚫 /ban command received")
+    print(f"[LOG] 👤 Sender: {sender.first_name if sender else 'Unknown'} (ID: {sender_id})")
+    print(f"[LOG] 📍 Chat type: {'Group' if event.is_group else 'Private'}")
+    if event.is_group:
+        chat = await event.get_chat()
+        print(f"[LOG] 📍 Group: {chat.title if chat else 'Unknown'}")
     
     # Check admin permission (allows anonymous admins too)
     has_permission = await check_admin_permission(event, sender_id)
@@ -971,10 +1003,12 @@ async def unban_handler(event):
     sender = await event.get_sender()
     sender_id = sender.id if sender else None
     
-    # Debug: Check what we're getting
-    print(f"UNBAN CMD: sender={sender}, from_id={event.from_id if hasattr(event, 'from_id') else 'N/A'}")
-    if event.message:
-        print(f"UNBAN CMD: message.from_id={event.message.from_id if hasattr(event.message, 'from_id') else 'N/A'}")
+    print(f"[LOG] ✅ /unban command received")
+    print(f"[LOG] 👤 Sender: {sender.first_name if sender else 'Unknown'} (ID: {sender_id})")
+    print(f"[LOG] 📍 Chat type: {'Group' if event.is_group else 'Private'}")
+    if event.is_group:
+        chat = await event.get_chat()
+        print(f"[LOG] 📍 Group: {chat.title if chat else 'Unknown'}")
     
     # Check admin permission (allows anonymous admins too)
     has_permission = await check_admin_permission(event, sender_id)
@@ -1062,10 +1096,12 @@ async def info_handler(event):
     sender = await event.get_sender()
     sender_id = sender.id if sender else None
     
-    # Debug: Check what we're getting
-    print(f"INFO CMD: sender={sender}, from_id={event.from_id if hasattr(event, 'from_id') else 'N/A'}")
-    if event.message:
-        print(f"INFO CMD: message.from_id={event.message.from_id if hasattr(event.message, 'from_id') else 'N/A'}")
+    print(f"[LOG] ℹ️ /info command received")
+    print(f"[LOG] 👤 Sender: {sender.first_name if sender else 'Unknown'} (ID: {sender_id})")
+    print(f"[LOG] 📍 Chat type: {'Group' if event.is_group else 'Private'}")
+    if event.is_group:
+        chat = await event.get_chat()
+        print(f"[LOG] 📍 Group: {chat.title if chat else 'Unknown'}")
     
     # Check admin permission (allows anonymous admins too)
     has_permission = await check_admin_permission(event, sender_id)
