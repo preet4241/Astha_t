@@ -792,59 +792,50 @@ async def group_message_handler(event):
         print(f"Error in group message handler: {e}")
         pass
 
-async def check_admin_permission(event, sender_id):
-    """Check if user has admin permission (bot owner, group owner, or group admin)"""
+async def check_admin_permission(event, sender_id=None):
+    """Check if user has admin permission (bot owner, group owner, or group admin or anonymous admin)"""
+    from telethon.tl.types import PeerChannel
+    
     # Bot owner has permission everywhere
-    if sender_id == owner_id:
+    if sender_id and sender_id == owner_id:
         return True
     
     # In private chat, only bot owner allowed
     if event.is_private:
-        return False
+        return sender_id == owner_id
     
-    # In group, check if user is group owner or admin
+    # In group, check if user is group owner or admin or anonymous admin
     if event.is_group:
         try:
             chat = await event.get_chat()
             
-            # Check if message is from anonymous admin
-            # Anonymous admins have sender_id as the group's linked channel or 1087968824
-            if hasattr(event, 'sender_id'):
-                # If sender is anonymous admin (136817688 or similar channel-based ID)
-                # We need to check the actual user who sent via event.message.from_id
-                if event.message and hasattr(event.message, 'from_id'):
-                    # For anonymous admins, from_id will be PeerChannel
-                    from telethon.tl.types import PeerChannel
-                    if isinstance(event.message.from_id, PeerChannel):
-                        # This is an anonymous admin, return True
-                        print(f"Anonymous admin detected in group {chat.title}")
-                        return True
-            
-            # Regular user permission check
-            try:
-                participant = await client.get_permissions(chat, sender_id)
-                if participant.is_creator or participant.is_admin:
+            # First check: is this an anonymous admin?
+            if event.message and hasattr(event.message, 'from_id'):
+                if isinstance(event.message.from_id, PeerChannel):
+                    # This is an anonymous admin, return True
                     return True
-            except Exception as perm_error:
-                print(f"Permission check error: {perm_error}")
-                # Last resort: check if the original sender_id itself indicates admin
-                # Sometimes anonymous admins appear with group channel ID
-                return False
-                
+            
+            # Second check: regular user with sender_id
+            if sender_id:
+                try:
+                    participant = await client.get_permissions(chat, sender_id)
+                    if participant.is_creator or participant.is_admin:
+                        return True
+                except Exception:
+                    pass
+                    
         except Exception as e:
-            print(f"Error checking permissions: {e}")
-            return False
+            pass
     
     return False
 
 @client.on(events.NewMessage(pattern=r'/ban(?:\s+(.+))?'))
 async def ban_handler(event):
     sender = await event.get_sender()
-    if not sender:
-        raise events.StopPropagation
+    sender_id = sender.id if sender else None
     
-    # Check admin permission
-    has_permission = await check_admin_permission(event, sender.id)
+    # Check admin permission (allows anonymous admins too)
+    has_permission = await check_admin_permission(event, sender_id)
     if not has_permission:
         await event.respond('🔐 Only bot owner or group admins can use this command!')
         raise events.StopPropagation
@@ -916,11 +907,10 @@ async def ban_handler(event):
 @client.on(events.NewMessage(pattern=r'/unban(?:\s+(.+))?'))
 async def unban_handler(event):
     sender = await event.get_sender()
-    if not sender:
-        raise events.StopPropagation
+    sender_id = sender.id if sender else None
     
-    # Check admin permission
-    has_permission = await check_admin_permission(event, sender.id)
+    # Check admin permission (allows anonymous admins too)
+    has_permission = await check_admin_permission(event, sender_id)
     if not has_permission:
         await event.respond('🔐 Only bot owner or group admins can use this command!')
         raise events.StopPropagation
@@ -992,11 +982,10 @@ async def unban_handler(event):
 @client.on(events.NewMessage(pattern=r'/info(?:\s+(.+))?'))
 async def info_handler(event):
     sender = await event.get_sender()
-    if not sender:
-        raise events.StopPropagation
+    sender_id = sender.id if sender else None
     
-    # Check admin permission
-    has_permission = await check_admin_permission(event, sender.id)
+    # Check admin permission (allows anonymous admins too)
+    has_permission = await check_admin_permission(event, sender_id)
     if not has_permission:
         await event.respond('🔐 Only bot owner or group admins can use this command!')
         raise events.StopPropagation
