@@ -722,19 +722,49 @@ async def message_handler(event):
 @client.on(events.ChatAction())
 async def chat_action_handler(event):
     try:
-        if event.user_joined:
-            chat = await event.get_chat()
+        chat = await event.get_chat()
+        if hasattr(chat, 'id') and (hasattr(event, 'user_joined') and event.user_joined):
+            grp_id = chat.id
+            grp_name = chat.username or str(chat.id)
+            grp_title = chat.title or 'Unknown'
+            
+            if not group_exists(grp_id):
+                add_group(grp_id, grp_name, grp_title)
+            
             user = await event.get_sender()
-            if hasattr(chat, 'id'):
-                grp_id = chat.id
-                if group_exists(grp_id):
-                    welcome_msg = get_setting('group_welcome_text', '')
-                    if welcome_msg:
-                        msg_text = format_text(welcome_msg, user, get_stats())
-                        await event.respond(msg_text)
+            if user:
+                welcome_msg = get_setting('group_welcome_text', '')
+                if welcome_msg:
+                    msg_text = format_text(welcome_msg, user, get_stats())
+                    await event.respond(msg_text)
     except Exception as e:
         pass
     raise events.StopPropagation
+
+@client.on(events.NewMessage(incoming=True))
+async def group_message_handler(event):
+    try:
+        if event.is_group:
+            sender = await event.get_sender()
+            if not sender:
+                return
+            
+            chat = await event.get_chat()
+            grp_id = chat.id
+            grp_name = chat.username or str(chat.id)
+            grp_title = chat.title or 'Unknown'
+            
+            if not group_exists(grp_id):
+                add_group(grp_id, grp_name, grp_title)
+                welcome_msg = get_setting('group_welcome_text', '')
+                if welcome_msg:
+                    msg_text = format_text(welcome_msg, sender, get_stats())
+                    try:
+                        await event.respond(msg_text)
+                    except Exception:
+                        pass
+    except Exception as e:
+        pass
 
 @client.on(events.NewMessage(pattern=r'/ban(?:\s+(.+))?'))
 async def ban_handler(event):
