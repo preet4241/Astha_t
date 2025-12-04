@@ -744,6 +744,73 @@ async def message_handler(event):
 
 joined_users = {}
 
+@client.on(events.ChatAction)
+async def member_joined_handler(event):
+    """Handle new members joining the group"""
+    try:
+        if event.user_joined or event.user_added:
+            chat = await event.get_chat()
+            if not chat:
+                return
+            
+            grp_id = chat.id
+            grp_name = chat.username or str(chat.id)
+            grp_title = chat.title or 'Unknown Group'
+            
+            print(f"[LOG] New member joined event in {grp_title} (ID: {grp_id})")
+            
+            # Add group to database if not exists
+            if not group_exists(grp_id):
+                add_group(grp_id, grp_name, grp_title)
+                print(f"[LOG] Group {grp_title} added to database")
+            
+            # Get the user who joined
+            user = await event.get_user()
+            if not user:
+                print(f"[LOG] Could not get user info for join event")
+                return
+            
+            print(f"[LOG] User joined: {user.first_name} (@{user.username or 'no_username'}) ID: {user.id}")
+            
+            # Add user to database
+            add_user(user.id, user.username or 'unknown', user.first_name or 'User')
+            
+            # Mark user as welcomed in this group
+            key = f"{grp_id}_{user.id}"
+            joined_users[key] = True
+            
+            # Get welcome message
+            welcome_msg = get_setting('group_welcome_text', '')
+            if welcome_msg:
+                msg_text = format_text(welcome_msg, user, get_stats())
+                print(f"[LOG] Using custom welcome message")
+            else:
+                user_username = user.username or user.first_name or "user"
+                msg_text = get_random_welcome_message(user_username, grp_title)
+                print(f"[LOG] Using random welcome message")
+            
+            try:
+                # Send welcome message
+                welcome_message = await client.send_message(chat, msg_text)
+                print(f"[LOG] ✅ Welcome message sent to {user.first_name} in {grp_title}")
+                
+                # Schedule deletion after 7 seconds
+                async def delete_after_delay():
+                    await asyncio.sleep(7)
+                    try:
+                        await welcome_message.delete()
+                        print(f"[LOG] 🗑️ Welcome message deleted for {user.first_name} in {grp_title}")
+                    except Exception as del_err:
+                        print(f"[LOG] ❌ Could not delete welcome message: {del_err}")
+                
+                # Run deletion in background
+                asyncio.create_task(delete_after_delay())
+            except Exception as send_err:
+                print(f"[LOG] ❌ Error sending welcome message: {send_err}")
+                
+    except Exception as e:
+        print(f"[LOG] ❌ Error in member_joined_handler: {e}")
+
 @client.on(events.NewMessage(incoming=True))
 async def group_message_handler(event):
     try:
@@ -761,42 +828,13 @@ async def group_message_handler(event):
             # Add group to database if not exists
             if not group_exists(grp_id):
                 add_group(grp_id, grp_name, grp_title)
-            
-            # Track user - and send welcome on first message
-            key = f"{grp_id}_{sender.id}"
-            if key not in joined_users:
-                joined_users[key] = True
-                welcome_msg = get_setting('group_welcome_text', '')
-                if welcome_msg:
-                    msg_text = format_text(welcome_msg, sender, get_stats())
-                else:
-                    user_username = sender.username or sender.first_name or "user"
-                    msg_text = get_random_welcome_message(user_username, grp_title)
-                try:
-                    # Send welcome message
-                    welcome_message = await event.reply(msg_text)
-                    print(f"Welcome message sent to {sender.first_name} in {grp_title}")
-                    
-                    # Schedule deletion after 7 seconds
-                    import asyncio
-                    async def delete_after_delay():
-                        await asyncio.sleep(7)
-                        try:
-                            await welcome_message.delete()
-                            print(f"Welcome message deleted for {sender.first_name}")
-                        except Exception as del_err:
-                            print(f"Could not delete welcome message: {del_err}")
-                    
-                    # Run deletion in background
-                    asyncio.create_task(delete_after_delay())
-                except Exception as send_err:
-                    print(f"Error sending welcome message: {send_err}")
+                print(f"[LOG] Group {grp_title} auto-added from message")
             
             # Track messages
             add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
             increment_messages(sender.id)
     except Exception as e:
-        print(f"Error in group_message_handler: {e}")
+        print(f"[LOG] ❌ Error in group_message_handler: {e}")
 
 async def check_admin_permission(event, sender_id=None):
     """Check if user has admin permission (bot owner, group owner, or group admin or anonymous admin)"""
