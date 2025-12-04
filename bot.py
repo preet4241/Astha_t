@@ -794,9 +794,9 @@ async def member_joined_handler(event):
                 welcome_message = await client.send_message(chat, msg_text)
                 print(f"[LOG] ✅ Welcome message sent to {user.first_name} in {grp_title}")
                 
-                # Schedule deletion after 7 seconds
+                # Schedule deletion after 15 seconds
                 async def delete_after_delay():
-                    await asyncio.sleep(7)
+                    await asyncio.sleep(15)
                     try:
                         await welcome_message.delete()
                         print(f"[LOG] 🗑️ Welcome message deleted for {user.first_name} in {grp_title}")
