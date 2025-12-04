@@ -774,17 +774,22 @@ async def group_message_handler(event):
     try:
         if event.is_group:
             sender = await event.get_sender()
-            if not sender:
-                return
             
             chat = await event.get_chat()
             grp_id = chat.id
             grp_name = chat.username or str(chat.id)
             grp_title = chat.title or 'Unknown'
             
+            # Add group to database if not exists
             if not group_exists(grp_id):
                 add_group(grp_id, grp_name, grp_title)
+            
+            # Track user messages (even for anonymous admins, track the group activity)
+            if sender:
+                add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
+                increment_messages(sender.id)
     except Exception as e:
+        print(f"Error in group message handler: {e}")
         pass
 
 async def check_admin_permission(event, sender_id):
@@ -802,25 +807,32 @@ async def check_admin_permission(event, sender_id):
         try:
             chat = await event.get_chat()
             
-            # Handle anonymous admins - check event.sender_id instead
-            actual_sender_id = sender_id
-            if hasattr(event, 'sender_id') and event.sender_id:
-                actual_sender_id = event.sender_id
+            # Check if message is from anonymous admin
+            # Anonymous admins have sender_id as the group's linked channel or 1087968824
+            if hasattr(event, 'sender_id'):
+                # If sender is anonymous admin (136817688 or similar channel-based ID)
+                # We need to check the actual user who sent via event.message.from_id
+                if event.message and hasattr(event.message, 'from_id'):
+                    # For anonymous admins, from_id will be PeerChannel
+                    from telethon.tl.types import PeerChannel
+                    if isinstance(event.message.from_id, PeerChannel):
+                        # This is an anonymous admin, return True
+                        print(f"Anonymous admin detected in group {chat.title}")
+                        return True
             
-            participant = await client.get_permissions(chat, actual_sender_id)
-            
-            # Check if user is creator or admin
-            if participant.is_creator or participant.is_admin:
-                return True
+            # Regular user permission check
+            try:
+                participant = await client.get_permissions(chat, sender_id)
+                if participant.is_creator or participant.is_admin:
+                    return True
+            except Exception as perm_error:
+                print(f"Permission check error: {perm_error}")
+                # Last resort: check if the original sender_id itself indicates admin
+                # Sometimes anonymous admins appear with group channel ID
+                return False
+                
         except Exception as e:
             print(f"Error checking permissions: {e}")
-            # If error, try to check if sender is anonymous admin (1087968824 is Telegram's anonymous admin ID)
-            try:
-                if sender_id == 1087968824 or (hasattr(event, 'sender_id') and event.sender_id == 1087968824):
-                    # Anonymous admin detected
-                    return True
-            except:
-                pass
             return False
     
     return False
