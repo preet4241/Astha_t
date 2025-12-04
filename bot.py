@@ -904,11 +904,20 @@ async def ban_handler(event):
     if target_user.get('banned'):
         await event.respond('❌ This user is already banned!')
     else:
+        # Ban user in bot database
         ban_user(target_user['user_id'])
-        group_name = ""
+        
+        # If in group, also kick from group
         if event.is_group:
-            chat = await event.get_chat()
-            group_name = f" in {chat.title}"
+            try:
+                chat = await event.get_chat()
+                await client.edit_permissions(chat, target_user_id, view_messages=False)
+                group_name = f" in {chat.title}"
+            except Exception as kick_err:
+                print(f"Could not kick user from group: {kick_err}")
+                group_name = " in bot"
+        else:
+            group_name = " in bot"
         
         result_text = f"✅ User Banned{group_name}!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
         await event.respond(result_text)
@@ -984,11 +993,22 @@ async def unban_handler(event):
     if not target_user.get('banned'):
         await event.respond('❌ This user is not banned!')
     else:
+        # Unban user in bot database
         unban_user(target_user['user_id'])
-        group_name = ""
+        
+        # If in group, also restore permissions
         if event.is_group:
-            chat = await event.get_chat()
-            group_name = f" in {chat.title}"
+            try:
+                from telethon.tl.types import ChatBannedRights
+                chat = await event.get_chat()
+                # Restore full permissions (no restrictions)
+                await client.edit_permissions(chat, target_user_id, ChatBannedRights(until_date=None))
+                group_name = f" in {chat.title}"
+            except Exception as restore_err:
+                print(f"Could not restore user in group: {restore_err}")
+                group_name = " in bot"
+        else:
+            group_name = " in bot"
         
         result_text = f"✅ User Unbanned{group_name}!\n\nUser ID: {target_user['user_id']}\nUsername: @{target_user['username']}\nName: {target_user['first_name']}"
         await event.respond(result_text)
