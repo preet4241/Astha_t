@@ -78,18 +78,18 @@ async def start_handler(event):
     
     if sender.id == owner_id:
         buttons = [
-            [Button.inline('Tools', b'owner_tools')],
-            [Button.inline('Users', b'owner_users'), Button.inline('Broadcast', b'owner_broadcast')],
-            [Button.inline('Status', b'owner_status'), Button.inline('Settings', b'owner_settings')],
+            [Button.inline('🛠️ Tools', b'owner_tools')],
+            [Button.inline('👥 Users', b'owner_users'), Button.inline('📢 Broadcast', b'owner_broadcast')],
+            [Button.inline('📊 Status', b'owner_status'), Button.inline('⚙️ Settings', b'owner_settings')],
         ]
         custom_text = get_setting('owner_start_text', get_default_owner_text())
         owner_text = format_text(custom_text, sender, stats, None)
         await event.respond(owner_text, buttons=buttons)
     else:
         buttons = [
-            [Button.inline('Tools', b'user_tools')],
-            [Button.inline('Profile', b'user_profile'), Button.inline('Help', b'user_help')],
-            [Button.inline('About', b'user_about')],
+            [Button.inline('🛠️ Tools', b'user_tools')],
+            [Button.inline('👤 Profile', b'user_profile'), Button.inline('❓ Help', b'user_help')],
+            [Button.inline('ℹ️ About', b'user_about')],
         ]
         user_data = get_user(sender.id)
         custom_text = get_setting('user_start_text', get_default_user_text())
@@ -110,18 +110,18 @@ async def callback_handler(event):
     if data == b'owner_groups':
         groups = get_all_groups()
         buttons = [
-            [Button.inline('Add', b'group_add'), Button.inline('Remove', b'group_remove')],
-            [Button.inline('List', b'group_list_page_1'), Button.inline('Welcome Text', b'group_welcome_text')],
-            [Button.inline('Back', b'owner_back')],
+            [Button.inline('➕ Add', b'group_add'), Button.inline('➖ Remove', b'group_remove')],
+            [Button.inline('📋 List', b'group_list_page_1'), Button.inline('👋 Welcome', b'group_welcome_text')],
+            [Button.inline('🔙 Back', b'owner_back')],
         ]
         group_text = f"GROUPS\n\nConnected: {len(groups)}\n\nWhat do you want to do?"
         await event.edit(group_text, buttons=buttons)
     
     elif data == b'group_welcome_text':
         buttons = [
-            [Button.inline('Add', b'group_welcome_text_add'), Button.inline('Remove', b'group_welcome_text_remove'), Button.inline('Default', b'group_welcome_text_default')],
-            [Button.inline('Msgs', b'group_welcome_text_msgs')],
-            [Button.inline('Back', b'owner_groups')],
+            [Button.inline('✏️ Edit', b'group_welcome_text_add'), Button.inline('🗑️ Remove', b'group_welcome_text_remove'), Button.inline('🔄 Default', b'group_welcome_text_default')],
+            [Button.inline('💬 Messages', b'group_welcome_text_msgs')],
+            [Button.inline('🔙 Back', b'owner_groups')],
         ]
         current_text = get_setting('group_welcome_text', 'Welcome to group!')
         text = f"GROUP WELCOME TEXT\n\nCurrent: {current_text}\n\nManage welcome message for new members:"
@@ -134,33 +134,33 @@ async def callback_handler(event):
         for i, grp in enumerate(groups, 1):
             msg_text += f"{i}. {grp['title']}\n"
         buttons = [
-            [Button.inline('Back', b'group_welcome_text')]
+            [Button.inline('🔙 Back', b'group_welcome_text')]
         ]
         await event.edit(msg_text, buttons=buttons)
     
     elif data == b'group_welcome_text_add':
         start_text_temp[sender.id] = 'group_welcome'
-        buttons = [[Button.inline('Cancel', b'group_welcome_text')]]
+        buttons = [[Button.inline('❌ Cancel', b'group_welcome_text')]]
         help_text = "Type new group welcome text:\n\nPlaceholders: {greeting}, {date}, {time}, {bot_name}, {first_name}"
         await event.edit(help_text, buttons=buttons)
     
     elif data == b'group_welcome_text_remove':
         set_setting('group_welcome_text', '')
-        await event.edit('Group welcome text removed!', buttons=[[Button.inline('Back', b'group_welcome_text')]])
+        await event.edit('Group welcome text removed!', buttons=[[Button.inline('🔙 Back', b'group_welcome_text')]])
     
     elif data == b'group_welcome_text_default':
         set_setting('group_welcome_text', 'Welcome to group!')
-        await event.edit('Group welcome text reset to default!', buttons=[[Button.inline('Back', b'group_welcome_text')]])
+        await event.edit('Group welcome text reset to default!', buttons=[[Button.inline('🔙 Back', b'group_welcome_text')]])
     
     elif data == b'group_add':
         group_action_temp[sender.id] = 'add'
-        buttons = [[Button.inline('Cancel', b'owner_groups')]]
+        buttons = [[Button.inline('❌ Cancel', b'owner_groups')]]
         await event.edit("ADD GROUP\n\nChoose one method:\n1. Group ID (number)\n2. Group username (@username)\n3. Forward message from group", buttons=buttons)
     
     elif data == b'group_remove':
         groups = get_all_groups()
         if not groups:
-            await event.edit('No groups to remove!', buttons=[[Button.inline('Back', b'owner_groups')]])
+            await event.edit('No groups to remove!', buttons=[[Button.inline('🔙 Back', b'owner_groups')]])
         else:
             group_page_temp[sender.id] = 1
             total_pages = (len(groups) + 5) // 6
@@ -168,10 +168,10 @@ async def callback_handler(event):
             end_idx = min(6, len(groups))
             buttons = []
             for grp in groups[start_idx:end_idx]:
-                buttons.append([Button.inline(f'X {grp["username"]}', f'remove_grp_{grp["group_id"]}')]) 
+                buttons.append([Button.inline(f'❌ {grp["username"]}', f'remove_grp_{grp["group_id"]}')]) 
             if total_pages > 1:
-                buttons.append([Button.inline(f'Next (1/{total_pages})', b'group_remove_next')])
-            buttons.append([Button.inline('Back', b'owner_groups')])
+                buttons.append([Button.inline(f'➡️ Next (1/{total_pages})', b'group_remove_next')])
+            buttons.append([Button.inline('🔙 Back', b'owner_groups')])
             await event.edit('REMOVE GROUP\n\nSelect group to remove:', buttons=buttons)
     
     elif data == b'group_remove_next':
@@ -185,16 +185,16 @@ async def callback_handler(event):
         end_idx = min(start_idx + 6, len(groups))
         buttons = []
         for grp in groups[start_idx:end_idx]:
-            buttons.append([Button.inline(f'X {grp["username"]}', f'remove_grp_{grp["group_id"]}')]) 
+            buttons.append([Button.inline(f'❌ {grp["username"]}', f'remove_grp_{grp["group_id"]}')]) 
         if total_pages > 1:
-            buttons.append([Button.inline(f'Next ({page}/{total_pages})', b'group_remove_next')])
-        buttons.append([Button.inline('Back', b'owner_groups')])
+            buttons.append([Button.inline(f'➡️ Next ({page}/{total_pages})', b'group_remove_next')])
+        buttons.append([Button.inline('🔙 Back', b'owner_groups')])
         await event.edit('REMOVE GROUP\n\nSelect group to remove:', buttons=buttons)
     
     elif data == b'group_list_page_1':
         groups = get_all_groups()
         if not groups:
-            await event.edit('No groups yet!', buttons=[[Button.inline('Back', b'owner_groups')]])
+            await event.edit('No groups yet!', buttons=[[Button.inline('🔙 Back', b'owner_groups')]])
         else:
             group_page_temp[sender.id] = 1
             total_pages = (len(groups) + 5) // 6
@@ -202,10 +202,10 @@ async def callback_handler(event):
             end_idx = min(6, len(groups))
             buttons = []
             for grp in groups[start_idx:end_idx]:
-                buttons.append([Button.inline(grp["title"], f'show_grp_{grp["group_id"]}')])
+                buttons.append([Button.inline(f'👥 {grp["title"]}', f'show_grp_{grp["group_id"]}')])
             if total_pages > 1:
-                buttons.append([Button.inline(f'Next (1/{total_pages})', b'group_list_next')])
-            buttons.append([Button.inline('Back', b'owner_groups')])
+                buttons.append([Button.inline(f'➡️ Next (1/{total_pages})', b'group_list_next')])
+            buttons.append([Button.inline('🔙 Back', b'owner_groups')])
             await event.edit('GROUPS LIST', buttons=buttons)
     
     elif data == b'group_list_next':
@@ -219,10 +219,10 @@ async def callback_handler(event):
         end_idx = min(start_idx + 6, len(groups))
         buttons = []
         for grp in groups[start_idx:end_idx]:
-            buttons.append([Button.inline(grp["title"], f'show_grp_{grp["group_id"]}')])
+            buttons.append([Button.inline(f'👥 {grp["title"]}', f'show_grp_{grp["group_id"]}')])
         if total_pages > 1:
-            buttons.append([Button.inline(f'Next ({page}/{total_pages})', b'group_list_next')])
-        buttons.append([Button.inline('Back', b'owner_groups')])
+            buttons.append([Button.inline(f'➡️ Next ({page}/{total_pages})', b'group_list_next')])
+        buttons.append([Button.inline('🔙 Back', b'owner_groups')])
         await event.edit('GROUPS LIST', buttons=buttons)
     
     elif data.startswith(b'remove_grp_'):
@@ -230,7 +230,7 @@ async def callback_handler(event):
         remove_group(group_id)
         groups = get_all_groups()
         if not groups:
-            await event.edit('All groups removed!', buttons=[[Button.inline('Back', b'owner_groups')]])
+            await event.edit('All groups removed!', buttons=[[Button.inline('🔙 Back', b'owner_groups')]])
         else:
             total_pages = (len(groups) + 5) // 6
             group_page_temp[sender.id] = 1
@@ -238,10 +238,10 @@ async def callback_handler(event):
             end_idx = min(6, len(groups))
             buttons = []
             for grp in groups[start_idx:end_idx]:
-                buttons.append([Button.inline(f'X {grp["username"]}', f'remove_grp_{grp["group_id"]}')]) 
+                buttons.append([Button.inline(f'❌ {grp["username"]}', f'remove_grp_{grp["group_id"]}')]) 
             if total_pages > 1:
-                buttons.append([Button.inline(f'Next (1/{total_pages})', b'group_remove_next')])
-            buttons.append([Button.inline('Back', b'owner_groups')])
+                buttons.append([Button.inline(f'➡️ Next (1/{total_pages})', b'group_remove_next')])
+            buttons.append([Button.inline('🔙 Back', b'owner_groups')])
             await event.edit('REMOVE GROUP\n\nSelect group to remove:', buttons=buttons)
     
     elif data.startswith(b'show_grp_'):
@@ -249,41 +249,41 @@ async def callback_handler(event):
         groups = get_all_groups()
         grp_info = next((g for g in groups if g['group_id'] == group_id), None)
         if grp_info:
-            info_text = f"GROUP: {grp_info['title']}\nID: {grp_info['group_id']}\nUsername: @{grp_info['username']}\nAdded: {grp_info['added_date'][:10]}"
-            await event.edit(info_text, buttons=[[Button.inline('Back', b'group_list_page_1')]])
+            info_text = f"👥 GROUP: {grp_info['title']}\nID: {grp_info['group_id']}\nUsername: @{grp_info['username']}\nAdded: {grp_info['added_date'][:10]}"
+            await event.edit(info_text, buttons=[[Button.inline('🔙 Back', b'group_list_page_1')]])
     
     elif data == b'setting_start_text':
         buttons = [
-            [Button.inline('Owner', b'start_text_owner'), Button.inline('User', b'start_text_user')],
-            [Button.inline('Back', b'owner_settings')],
+            [Button.inline('👑 Owner', b'start_text_owner'), Button.inline('👤 User', b'start_text_user')],
+            [Button.inline('🔙 Back', b'owner_settings')],
         ]
         await event.edit('START TEXT\n\nChoose which text to customize:', buttons=buttons)
     
     elif data == b'start_text_owner':
         buttons = [
-            [Button.inline('Edit', b'start_text_owner_edit'), Button.inline('See', b'start_text_owner_see')],
-            [Button.inline('Default', b'start_text_owner_default')],
-            [Button.inline('Back', b'setting_start_text')],
+            [Button.inline('✏️ Edit', b'start_text_owner_edit'), Button.inline('👁️ See', b'start_text_owner_see')],
+            [Button.inline('🔄 Default', b'start_text_owner_default')],
+            [Button.inline('🔙 Back', b'setting_start_text')],
         ]
         await event.edit('OWNER START TEXT\n\nWhat do you want to do?', buttons=buttons)
     
     elif data == b'start_text_user':
         buttons = [
-            [Button.inline('Edit', b'start_text_user_edit'), Button.inline('See', b'start_text_user_see')],
-            [Button.inline('Default', b'start_text_user_default')],
-            [Button.inline('Back', b'setting_start_text')],
+            [Button.inline('✏️ Edit', b'start_text_user_edit'), Button.inline('👁️ See', b'start_text_user_see')],
+            [Button.inline('🔄 Default', b'start_text_user_default')],
+            [Button.inline('🔙 Back', b'setting_start_text')],
         ]
         await event.edit('USER START TEXT\n\nWhat do you want to do?', buttons=buttons)
     
     elif data == b'start_text_owner_edit':
         start_text_temp[sender.id] = 'owner'
-        buttons = [[Button.inline('Cancel', b'start_text_owner')]]
+        buttons = [[Button.inline('❌ Cancel', b'start_text_owner')]]
         help_text = "Type new start text for Owner:\n\nPlaceholders: {greeting}, {date}, {time}, {total_users}, {active_users}, {bot_name}"
         await event.edit(help_text, buttons=buttons)
     
     elif data == b'start_text_user_edit':
         start_text_temp[sender.id] = 'user'
-        buttons = [[Button.inline('Cancel', b'start_text_user')]]
+        buttons = [[Button.inline('❌ Cancel', b'start_text_user')]]
         help_text = "Type new start text for User:\n\nPlaceholders: {greeting}, {first_name}, {username}, {date}, {user_messages}, {joined_date}"
         await event.edit(help_text, buttons=buttons)
     
@@ -291,42 +291,42 @@ async def callback_handler(event):
         owner_text = get_setting('owner_start_text', get_default_owner_text())
         preview = format_text(owner_text, sender, get_stats(), None)
         see_text = f"OWNER START TEXT PREVIEW:\n\n{preview}"
-        await event.edit(see_text, buttons=[[Button.inline('Back', b'start_text_owner')]])
+        await event.edit(see_text, buttons=[[Button.inline('🔙 Back', b'start_text_owner')]])
     
     elif data == b'start_text_user_see':
         user_text = get_setting('user_start_text', get_default_user_text())
         user_data = get_user(sender.id)
         preview = format_text(user_text, sender, get_stats(), user_data)
         see_text = f"USER START TEXT PREVIEW:\n\n{preview}"
-        await event.edit(see_text, buttons=[[Button.inline('Back', b'start_text_user')]])
+        await event.edit(see_text, buttons=[[Button.inline('🔙 Back', b'start_text_user')]])
     
     elif data == b'start_text_owner_default':
         set_setting('owner_start_text', get_default_owner_text())
-        await event.edit('Owner start text reset to default!\n\nOK', buttons=[[Button.inline('Back', b'start_text_owner')]])
+        await event.edit('✅ Owner start text reset to default!\n\nOK', buttons=[[Button.inline('🔙 Back', b'start_text_owner')]])
     
     elif data == b'start_text_user_default':
         set_setting('user_start_text', get_default_user_text())
-        await event.edit('User start text reset to default!\n\nOK', buttons=[[Button.inline('Back', b'start_text_user')]])
+        await event.edit('✅ User start text reset to default!\n\nOK', buttons=[[Button.inline('🔙 Back', b'start_text_user')]])
     
     elif data == b'setting_sub_force':
         channels = get_all_channels()
         buttons = [
-            [Button.inline('Add', b'sub_force_add'), Button.inline('Remove', b'sub_force_remove')],
-            [Button.inline('List', b'sub_force_list_page_1')],
-            [Button.inline('Back', b'owner_settings')],
+            [Button.inline('➕ Add', b'sub_force_add'), Button.inline('➖ Remove', b'sub_force_remove')],
+            [Button.inline('📋 List', b'sub_force_list_page_1')],
+            [Button.inline('🔙 Back', b'owner_settings')],
         ]
         sub_text = f"SUB-FORCE (Channel Subscription)\n\nActive Channels: {len(channels)}\n\nWhat do you want to do?"
         await event.edit(sub_text, buttons=buttons)
     
     elif data == b'sub_force_add':
         channel_action_temp[sender.id] = 'add'
-        buttons = [[Button.inline('Cancel', b'setting_sub_force')]]
+        buttons = [[Button.inline('❌ Cancel', b'setting_sub_force')]]
         await event.edit("ADD CHANNEL\n\nChoose one method:\n1. Channel ID (number)\n2. Channel username (@username)\n3. Forward message from channel", buttons=buttons)
     
     elif data == b'sub_force_remove':
         channels = get_all_channels()
         if not channels:
-            await event.edit('No channels to remove!', buttons=[[Button.inline('Back', b'setting_sub_force')]])
+            await event.edit('No channels to remove!', buttons=[[Button.inline('🔙 Back', b'setting_sub_force')]])
         else:
             channel_page_temp[sender.id] = 1
             total_pages = (len(channels) + 5) // 6
@@ -334,10 +334,10 @@ async def callback_handler(event):
             end_idx = min(6, len(channels))
             buttons = []
             for ch in channels[start_idx:end_idx]:
-                buttons.append([Button.inline(f'X {ch["username"]}', f'remove_ch_{ch["channel_id"]}')]) 
+                buttons.append([Button.inline(f'❌ {ch["username"]}', f'remove_ch_{ch["channel_id"]}')]) 
             if total_pages > 1:
-                buttons.append([Button.inline(f'Next (1/{total_pages})', b'sub_force_remove_next')])
-            buttons.append([Button.inline('Back', b'setting_sub_force')])
+                buttons.append([Button.inline(f'➡️ Next (1/{total_pages})', b'sub_force_remove_next')])
+            buttons.append([Button.inline('🔙 Back', b'setting_sub_force')])
             await event.edit('REMOVE CHANNEL\n\nSelect channel to remove:', buttons=buttons)
     
     elif data == b'sub_force_remove_next':
@@ -351,10 +351,10 @@ async def callback_handler(event):
         end_idx = min(start_idx + 6, len(channels))
         buttons = []
         for ch in channels[start_idx:end_idx]:
-            buttons.append([Button.inline(f'X {ch["username"]}', f'remove_ch_{ch["channel_id"]}')])
+            buttons.append([Button.inline(f'❌ {ch["username"]}', f'remove_ch_{ch["channel_id"]}')])
         if total_pages > 1:
-            buttons.append([Button.inline(f'Next ({page}/{total_pages})', b'sub_force_remove_next')])
-        buttons.append([Button.inline('Back', b'setting_sub_force')])
+            buttons.append([Button.inline(f'➡️ Next ({page}/{total_pages})', b'sub_force_remove_next')])
+        buttons.append([Button.inline('🔙 Back', b'setting_sub_force')])
         await event.edit('REMOVE CHANNEL\n\nSelect channel to remove:', buttons=buttons)
     
     elif data.startswith(b'remove_ch_'):
@@ -363,13 +363,13 @@ async def callback_handler(event):
         for ch in channels:
             if ch['channel_id'] == channel_id:
                 remove_channel(ch['username'])
-                await event.edit(f'Channel {ch["username"]} removed!', buttons=[[Button.inline('Back', b'setting_sub_force')]])
+                await event.edit(f'✅ Channel {ch["username"]} removed!', buttons=[[Button.inline('🔙 Back', b'setting_sub_force')]])
                 break
     
     elif data == b'sub_force_list_page_1' or data.startswith(b'sub_force_list_page_'):
         channels = get_all_channels()
         if not channels:
-            await event.edit('No channels added yet!', buttons=[[Button.inline('Back', b'setting_sub_force')]])
+            await event.edit('No channels added yet!', buttons=[[Button.inline('🔙 Back', b'setting_sub_force')]])
         else:
             if data.startswith(b'sub_force_list_page_'):
                 page = int(data.split(b'_')[3])
@@ -379,7 +379,7 @@ async def callback_handler(event):
             start_idx = (page - 1) * 6
             end_idx = min(start_idx + 6, len(channels))
             
-            text = f"CHANNELS LIST (Page {page}/{total_pages})\n\n"
+            text = f"📺 CHANNELS LIST (Page {page}/{total_pages})\n\n"
             for i, ch in enumerate(channels[start_idx:end_idx], 1):
                 added = ch['added_date'][:10] if ch['added_date'] else 'Unknown'
                 text += f"{i}. @{ch['username']}\n"
@@ -388,17 +388,17 @@ async def callback_handler(event):
             
             buttons = []
             if page > 1:
-                buttons.append([Button.inline(f'Prev ({page}/{total_pages})', f'sub_force_list_page_{page-1}'.encode())])
+                buttons.append([Button.inline(f'⬅️ Prev ({page}/{total_pages})', f'sub_force_list_page_{page-1}'.encode())])
             if page < total_pages:
-                buttons.append([Button.inline(f'Next ({page}/{total_pages})', f'sub_force_list_page_{page+1}'.encode())])
-            buttons.append([Button.inline('Back', b'setting_sub_force')])
+                buttons.append([Button.inline(f'➡️ Next ({page}/{total_pages})', f'sub_force_list_page_{page+1}'.encode())])
+            buttons.append([Button.inline('🔙 Back', b'setting_sub_force')])
             await event.edit(text, buttons=buttons)
     
     elif data == b'owner_settings':
         buttons = [
-            [Button.inline('Start Text', b'setting_start_text')],
-            [Button.inline('Sub-Force', b'setting_sub_force'), Button.inline('Groups', b'setting_groups')],
-            [Button.inline('Back', b'owner_back')],
+            [Button.inline('📝 Start Text', b'setting_start_text')],
+            [Button.inline('📺 Sub-Force', b'setting_sub_force'), Button.inline('👥 Groups', b'setting_groups')],
+            [Button.inline('🔙 Back', b'owner_back')],
         ]
         settings_text = "BOT SETTINGS\n\nConfigure your bot:"
         await event.edit(settings_text, buttons=buttons)
@@ -406,22 +406,22 @@ async def callback_handler(event):
     elif data == b'setting_groups':
         groups = get_all_groups()
         buttons = [
-            [Button.inline('Add', b'group_add'), Button.inline('Remove', b'group_remove')],
-            [Button.inline('List', b'group_list_page_1'), Button.inline('Welcome Text', b'group_welcome_text')],
-            [Button.inline('Setting', b'group_setting')],
-            [Button.inline('Back', b'owner_settings')],
+            [Button.inline('➕ Add', b'group_add'), Button.inline('➖ Remove', b'group_remove')],
+            [Button.inline('📋 List', b'group_list_page_1'), Button.inline('👋 Welcome', b'group_welcome_text')],
+            [Button.inline('⚙️ Settings', b'group_setting')],
+            [Button.inline('🔙 Back', b'owner_settings')],
         ]
         group_text = f"GROUPS\n\nConnected: {len(groups)}\n\nWhat do you want to do?"
         await event.edit(group_text, buttons=buttons)
     
     elif data == b'group_setting':
-        await event.edit('Group Settings: Coming soon...', buttons=[[Button.inline('Back', b'setting_groups')]])
+        await event.edit('⚙️ Group Settings: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_groups')]])
     
     elif data == b'owner_back':
         buttons = [
-            [Button.inline('Tools', b'owner_tools')],
-            [Button.inline('Users', b'owner_users'), Button.inline('Broadcast', b'owner_broadcast')],
-            [Button.inline('Status', b'owner_status'), Button.inline('Settings', b'owner_settings')],
+            [Button.inline('🛠️ Tools', b'owner_tools')],
+            [Button.inline('👥 Users', b'owner_users'), Button.inline('📢 Broadcast', b'owner_broadcast')],
+            [Button.inline('📊 Status', b'owner_status'), Button.inline('⚙️ Settings', b'owner_settings')],
         ]
         greeting = get_greeting()
         stats = get_stats()
@@ -429,47 +429,47 @@ async def callback_handler(event):
         await event.edit(owner_text, buttons=buttons)
     
     elif data == b'owner_users':
-        await event.edit('Users Panel (coming soon...)', buttons=[[Button.inline('Back', b'owner_back')]])
+        await event.edit('👥 Users Panel (coming soon...)', buttons=[[Button.inline('🔙 Back', b'owner_back')]])
     
     elif data == b'owner_broadcast':
         buttons = [
-            [Button.inline('Send', b'broadcast_send')],
-            [Button.inline('Back', b'owner_back')],
+            [Button.inline('📤 Send', b'broadcast_send')],
+            [Button.inline('🔙 Back', b'owner_back')],
         ]
-        await event.edit('BROADCAST\n\nSend message to all users', buttons=buttons)
+        await event.edit('📢 BROADCAST\n\nSend message to all users', buttons=buttons)
     
     elif data == b'owner_status':
         stats = get_stats()
         current_time = datetime.now().strftime("%H:%M:%S")
-        status_text = f"BOT STATUS\n\nUsers: {stats['total_users']}\nActive: {stats['active_users']}\nMessages: {stats['total_messages']}\nTime: {current_time}"
-        buttons = [[Button.inline('Back', b'owner_back')]]
+        status_text = f"📊 BOT STATUS\n\nUsers: {stats['total_users']}\nActive: {stats['active_users']}\nMessages: {stats['total_messages']}\nTime: {current_time}"
+        buttons = [[Button.inline('🔙 Back', b'owner_back')]]
         await event.edit(status_text, buttons=buttons)
     
     elif data == b'owner_tools':
-        await event.edit('Tools (coming soon...)', buttons=[[Button.inline('Back', b'owner_back')]])
+        await event.edit('🛠️ Tools (coming soon...)', buttons=[[Button.inline('🔙 Back', b'owner_back')]])
     
     elif data == b'user_tools':
-        await event.edit('User Tools (coming soon...)', buttons=[[Button.inline('Back', b'user_back')]])
+        await event.edit('🛠️ User Tools (coming soon...)', buttons=[[Button.inline('🔙 Back', b'user_back')]])
     
     elif data == b'user_profile':
         user = get_user(sender.id)
         if user:
-            profile_text = f"Profile\n\nName: {user['first_name']}\nUsername: @{user['username']}\nMessages: {user['messages']}\nJoined: {user['joined'][:10]}"
+            profile_text = f"👤 Profile\n\nName: {user['first_name']}\nUsername: @{user['username']}\nMessages: {user['messages']}\nJoined: {user['joined'][:10]}"
         else:
             profile_text = "Profile not found"
-        await event.edit(profile_text, buttons=[[Button.inline('Back', b'user_back')]])
+        await event.edit(profile_text, buttons=[[Button.inline('🔙 Back', b'user_back')]])
     
     elif data == b'user_help':
-        await event.edit('Help: Coming soon...', buttons=[[Button.inline('Back', b'user_back')]])
+        await event.edit('❓ Help: Coming soon...', buttons=[[Button.inline('🔙 Back', b'user_back')]])
     
     elif data == b'user_about':
-        await event.edit('About: Bot v1.0 by MultiBot', buttons=[[Button.inline('Back', b'user_back')]])
+        await event.edit('ℹ️ About: Bot v1.0 by MultiBot', buttons=[[Button.inline('🔙 Back', b'user_back')]])
     
     elif data == b'user_back':
         buttons = [
-            [Button.inline('Tools', b'user_tools')],
-            [Button.inline('Profile', b'user_profile'), Button.inline('Help', b'user_help')],
-            [Button.inline('About', b'user_about')],
+            [Button.inline('🛠️ Tools', b'user_tools')],
+            [Button.inline('👤 Profile', b'user_profile'), Button.inline('❓ Help', b'user_help')],
+            [Button.inline('ℹ️ About', b'user_about')],
         ]
         greeting = get_greeting()
         user_text = f"{greeting} {sender.first_name}!\n\nWhat would you like to do?"
@@ -477,8 +477,8 @@ async def callback_handler(event):
     
     elif data == b'broadcast_send':
         broadcast_temp[sender.id] = True
-        buttons = [[Button.inline('Cancel', b'owner_back')]]
-        await event.edit('Type your broadcast message:', buttons=buttons)
+        buttons = [[Button.inline('❌ Cancel', b'owner_back')]]
+        await event.edit('📝 Type your broadcast message:', buttons=buttons)
 
 @client.on(events.NewMessage)
 async def message_handler(event):
