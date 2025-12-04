@@ -61,8 +61,17 @@ def get_default_welcome_messages():
     ]
 
 def get_random_welcome_message(username, group_name):
-    """Get a random welcome message"""
+    """Get a random welcome message from both default and custom messages"""
     messages = get_default_welcome_messages()
+    
+    # Get custom welcome message from settings
+    custom_msg = get_setting('group_welcome_text', '')
+    
+    # If custom message exists, add it to the list
+    if custom_msg and custom_msg.strip():
+        messages.append(custom_msg)
+    
+    # Select random message
     selected = random.choice(messages)
     return selected.format(username=username, group_name=group_name)
 
@@ -757,6 +766,10 @@ processed_joins = {}
 async def member_joined_handler(event):
     """Handle new members joining the group"""
     try:
+        # Only process if there's an action message (user joined/added)
+        if not event.action_message:
+            return
+            
         if event.user_joined or event.user_added:
             chat = await event.get_chat()
             if not chat:
@@ -767,29 +780,30 @@ async def member_joined_handler(event):
             grp_name = chat.username or str(chat.id)
             grp_title = chat.title or 'Unknown Group'
             
+            # Check if group is in database (if removed, don't send welcome)
+            if not group_exists(grp_id):
+                print(f"[LOG] ⏭️ Group {grp_title} not in database, skipping welcome message")
+                return
+            
             # Get the user who joined
             user = await event.get_user()
             if not user:
                 print(f"[LOG] ⚠️ Could not get user info for join event in {grp_title}")
                 return
             
-            # Create unique key to prevent duplicate processing
-            join_key = f"{grp_id}_{user.id}_{int(datetime.now().timestamp())}"
+            # Create unique key based on message ID to prevent duplicate processing
+            if hasattr(event.action_message, 'id'):
+                join_key = f"{grp_id}_{user.id}_{event.action_message.id}"
+            else:
+                join_key = f"{grp_id}_{user.id}_{int(datetime.now().timestamp())}"
             
-            # Check if we already processed this join in last 3 seconds
-            current_time = datetime.now().timestamp()
-            for key, timestamp in list(processed_joins.items()):
-                if current_time - timestamp > 3:
-                    del processed_joins[key]
-            
-            # Check if similar join was recently processed
-            similar_key = f"{grp_id}_{user.id}"
-            if any(k.startswith(similar_key) for k in processed_joins.keys()):
+            # Check if we already processed this exact join event
+            if join_key in processed_joins:
                 print(f"[LOG] ⏭️ Skipping duplicate join event for {user.first_name} in {grp_title}")
                 return
             
             # Mark as processed
-            processed_joins[join_key] = current_time
+            processed_joins[join_key] = datetime.now().timestamp()
             
             print(f"[LOG] 👤 New member joined: {user.first_name} (@{user.username or 'no_username'}) ID: {user.id}")
             print(f"[LOG] 📍 Group: {grp_title} (ID: {grp_id})")
@@ -803,15 +817,10 @@ async def member_joined_handler(event):
             add_user(user.id, user.username or 'unknown', user.first_name or 'User')
             print(f"[LOG] ✅ User '{user.first_name}' added/updated in database")
             
-            # Get welcome message - ALWAYS send random message on join
-            welcome_msg = get_setting('group_welcome_text', '')
-            if welcome_msg:
-                msg_text = format_text(welcome_msg, user, get_stats())
-                print(f"[LOG] 📝 Using custom welcome message")
-            else:
-                user_username = user.username or user.first_name or "user"
-                msg_text = get_random_welcome_message(user_username, grp_title)
-                print(f"[LOG] 🎲 Random welcome message selected")
+            # Get random welcome message (includes both default and custom messages)
+            user_username = user.username or user.first_name or "user"
+            msg_text = get_random_welcome_message(user_username, grp_title)
+            print(f"[LOG] 🎲 Random welcome message selected: {msg_text[:50]}...")
             
             try:
                 # Send welcome message
@@ -849,14 +858,13 @@ async def group_message_handler(event):
             grp_name = chat.username or str(chat.id)
             grp_title = chat.title or 'Unknown'
             
-            # Add group to database if not exists
-            if not group_exists(grp_id):
-                add_group(grp_id, grp_name, grp_title)
-                print(f"[LOG] ✅ Group '{grp_title}' auto-added from message")
-            
-            # Track messages
-            add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
-            increment_messages(sender.id)
+            # Only track messages if group is in database
+            if group_exists(grp_id):
+                # Track messages
+                add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
+                increment_messages(sender.id)
+            else:
+                print(f"[LOG] ⏭️ Group '{grp_title}' not in database, skipping message tracking")
     except Exception as e:
         print(f"[LOG] ❌ Error in group_message_handler: {e}")
 
@@ -915,9 +923,16 @@ async def ban_handler(event):
     print(f"[LOG] 🚫 /ban command received")
     print(f"[LOG] 👤 Sender: {sender.first_name if sender else 'Unknown'} (ID: {sender_id})")
     print(f"[LOG] 📍 Chat type: {'Group' if event.is_group else 'Private'}")
+    
+    # If in group, check if group is in database
     if event.is_group:
         chat = await event.get_chat()
         print(f"[LOG] 📍 Group: {chat.title if chat else 'Unknown'}")
+        
+        if not group_exists(chat.id):
+            print(f"[LOG] ⚠️ Group {chat.title} not in database, ignoring command")
+            await event.respond('⚠️ This group is not registered with the bot!')
+            raise events.StopPropagation
     
     # Check admin permission (allows anonymous admins too)
     has_permission = await check_admin_permission(event, sender_id)
@@ -1006,9 +1021,16 @@ async def unban_handler(event):
     print(f"[LOG] ✅ /unban command received")
     print(f"[LOG] 👤 Sender: {sender.first_name if sender else 'Unknown'} (ID: {sender_id})")
     print(f"[LOG] 📍 Chat type: {'Group' if event.is_group else 'Private'}")
+    
+    # If in group, check if group is in database
     if event.is_group:
         chat = await event.get_chat()
         print(f"[LOG] 📍 Group: {chat.title if chat else 'Unknown'}")
+        
+        if not group_exists(chat.id):
+            print(f"[LOG] ⚠️ Group {chat.title} not in database, ignoring command")
+            await event.respond('⚠️ This group is not registered with the bot!')
+            raise events.StopPropagation
     
     # Check admin permission (allows anonymous admins too)
     has_permission = await check_admin_permission(event, sender_id)
@@ -1099,9 +1121,16 @@ async def info_handler(event):
     print(f"[LOG] ℹ️ /info command received")
     print(f"[LOG] 👤 Sender: {sender.first_name if sender else 'Unknown'} (ID: {sender_id})")
     print(f"[LOG] 📍 Chat type: {'Group' if event.is_group else 'Private'}")
+    
+    # If in group, check if group is in database
     if event.is_group:
         chat = await event.get_chat()
         print(f"[LOG] 📍 Group: {chat.title if chat else 'Unknown'}")
+        
+        if not group_exists(chat.id):
+            print(f"[LOG] ⚠️ Group {chat.title} not in database, ignoring command")
+            await event.respond('⚠️ This group is not registered with the bot!')
+            raise events.StopPropagation
     
     # Check admin permission (allows anonymous admins too)
     has_permission = await check_admin_permission(event, sender_id)
