@@ -423,9 +423,9 @@ async def callback_handler(event):
             [Button.inline('👥 Users', b'owner_users'), Button.inline('📢 Broadcast', b'owner_broadcast')],
             [Button.inline('📊 Status', b'owner_status'), Button.inline('⚙️ Settings', b'owner_settings')],
         ]
-        greeting = get_greeting()
         stats = get_stats()
-        owner_text = f"{greeting} Boss\n\nStatus: Online\nUsers: {stats['total_users']} | Active: {stats['active_users']}\n\nControl Desk:"
+        custom_text = get_setting('owner_start_text', get_default_owner_text())
+        owner_text = format_text(custom_text, sender, stats, None)
         await event.edit(owner_text, buttons=buttons)
     
     elif data == b'owner_users':
@@ -471,8 +471,10 @@ async def callback_handler(event):
             [Button.inline('👤 Profile', b'user_profile'), Button.inline('❓ Help', b'user_help')],
             [Button.inline('ℹ️ About', b'user_about')],
         ]
-        greeting = get_greeting()
-        user_text = f"{greeting} {sender.first_name}!\n\nWhat would you like to do?"
+        stats = get_stats()
+        user_data = get_user(sender.id)
+        custom_text = get_setting('user_start_text', get_default_user_text())
+        user_text = format_text(custom_text, sender, stats, user_data)
         await event.edit(user_text, buttons=buttons)
     
     elif data == b'broadcast_send':
