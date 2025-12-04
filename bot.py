@@ -769,7 +769,7 @@ async def group_message_handler(event):
 @client.on(events.NewMessage(pattern=r'/ban(?:\s+(.+))?'))
 async def ban_handler(event):
     sender = await event.get_sender()
-    if sender.id != owner_id:
+    if not sender or sender.id != owner_id:
         await event.respond('🔐 Owner only!')
         raise events.StopPropagation
     
@@ -818,7 +818,7 @@ async def ban_handler(event):
 @client.on(events.NewMessage(pattern=r'/unban(?:\s+(.+))?'))
 async def unban_handler(event):
     sender = await event.get_sender()
-    if sender.id != owner_id:
+    if not sender or sender.id != owner_id:
         await event.respond('🔐 Owner only!')
         raise events.StopPropagation
     
@@ -867,7 +867,7 @@ async def unban_handler(event):
 @client.on(events.NewMessage(pattern=r'/info(?:\s+(.+))?'))
 async def info_handler(event):
     sender = await event.get_sender()
-    if sender.id != owner_id:
+    if not sender or sender.id != owner_id:
         await event.respond('🔐 Owner only!')
         raise events.StopPropagation
     
