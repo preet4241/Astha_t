@@ -61,10 +61,16 @@ def get_default_welcome_messages():
     ]
 
 def get_random_welcome_message(username, group_name):
-    """Get a random welcome message - always picks a different random message"""
+    """Get a random welcome message - includes both default and custom messages"""
     messages = get_default_welcome_messages()
     
-    # Always pick from default random messages
+    # Get custom welcome messages from database
+    custom_msg = get_setting('group_welcome_text', '')
+    if custom_msg:
+        # Add custom message to the pool
+        messages.append(custom_msg)
+    
+    # Pick random message from combined pool
     selected = random.choice(messages)
     return selected.format(username=username, group_name=group_name)
 
@@ -447,12 +453,45 @@ async def callback_handler(event):
     
     elif data == b'owner_settings':
         buttons = [
+            [Button.inline('🛠️ Tools Handler', b'setting_tools_handler')],
             [Button.inline('📝 Start Text', b'setting_start_text')],
             [Button.inline('📺 Sub-Force', b'setting_sub_force'), Button.inline('👥 Groups', b'setting_groups')],
             [Button.inline('🔙 Back', b'owner_back')],
         ]
         settings_text = "BOT SETTINGS\n\nConfigure your bot:"
         await event.edit(settings_text, buttons=buttons)
+    
+    elif data == b'setting_tools_handler':
+        buttons = [
+            [Button.inline('📱 Number Info', b'tool_number_info')],
+            [Button.inline('🆔 Aadhar Info', b'tool_aadhar_info'), Button.inline('👨‍👩‍👧‍👦 Aadhar to Family', b'tool_aadhar_family')],
+            [Button.inline('🚗 Vehicle Info', b'tool_vehicle_info'), Button.inline('🏦 IFSC Info', b'tool_ifsc_info')],
+            [Button.inline('🇵🇰 Pak Num Info', b'tool_pak_num'), Button.inline('📍 Pin Code Info', b'tool_pincode_info')],
+            [Button.inline('🔙 Back', b'owner_settings')],
+        ]
+        tools_text = "🛠️ TOOLS HANDLER\n\nSelect a tool:"
+        await event.edit(tools_text, buttons=buttons)
+    
+    elif data == b'tool_number_info':
+        await event.edit('📱 Number Info: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
+    
+    elif data == b'tool_aadhar_info':
+        await event.edit('🆔 Aadhar Info: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
+    
+    elif data == b'tool_aadhar_family':
+        await event.edit('👨‍👩‍👧‍👦 Aadhar to Family: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
+    
+    elif data == b'tool_vehicle_info':
+        await event.edit('🚗 Vehicle Info: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
+    
+    elif data == b'tool_ifsc_info':
+        await event.edit('🏦 IFSC Info: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
+    
+    elif data == b'tool_pak_num':
+        await event.edit('🇵🇰 Pak Num Info: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
+    
+    elif data == b'tool_pincode_info':
+        await event.edit('📍 Pin Code Info: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
     
     elif data == b'setting_groups':
         groups = get_all_groups()

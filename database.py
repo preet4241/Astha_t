@@ -376,13 +376,20 @@ def is_group_active(group_id):
         return True
 
 def get_all_groups():
-    """Get all groups"""
+    """Get all active groups (not removed)"""
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    cursor.execute('SELECT group_id, group_username, group_title, added_date FROM groups ORDER BY added_date DESC')
-    groups = cursor.fetchall()
+    try:
+        cursor.execute('SELECT group_id, group_username, group_title, added_date FROM groups WHERE is_active = 1 ORDER BY added_date DESC')
+        groups = cursor.fetchall()
+    except Exception as e:
+        # If is_active column doesn't exist, get all groups
+        print(f"Error fetching active groups: {e}")
+        cursor.execute('SELECT group_id, group_username, group_title, added_date FROM groups ORDER BY added_date DESC')
+        groups = cursor.fetchall()
+    
     conn.close()
     
     result = []
@@ -397,13 +404,20 @@ def get_all_groups():
     return result
 
 def group_exists(group_id):
-    """Check if group exists"""
+    """Check if group exists and is active"""
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    cursor.execute('SELECT 1 FROM groups WHERE group_id = ?', (group_id,))
-    exists = cursor.fetchone() is not None
+    try:
+        cursor.execute('SELECT 1 FROM groups WHERE group_id = ? AND is_active = 1', (group_id,))
+        exists = cursor.fetchone() is not None
+    except Exception as e:
+        # If is_active column doesn't exist, just check existence
+        print(f"Error checking group existence: {e}")
+        cursor.execute('SELECT 1 FROM groups WHERE group_id = ?', (group_id,))
+        exists = cursor.fetchone() is not None
+    
     conn.close()
     
     return exists
