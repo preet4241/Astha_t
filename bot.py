@@ -757,23 +757,27 @@ async def member_joined_handler(event):
             grp_name = chat.username or str(chat.id)
             grp_title = chat.title or 'Unknown Group'
             
-            # Get the user who joined
-            user = await event.get_user()
-            if not user:
-                return
-            
-            # Check if already welcomed
-            key = f"{grp_id}_{user.id}"
-            if key in joined_users:
-                return
-            joined_users[key] = True
+            print(f"[LOG] New member joined event in {grp_title} (ID: {grp_id})")
             
             # Add group to database if not exists
             if not group_exists(grp_id):
                 add_group(grp_id, grp_name, grp_title)
+                print(f"[LOG] Group {grp_title} added to database")
+            
+            # Get the user who joined
+            user = await event.get_user()
+            if not user:
+                print(f"[LOG] Could not get user info for join event")
+                return
+            
+            print(f"[LOG] User joined: {user.first_name} (@{user.username or 'no_username'}) ID: {user.id}")
             
             # Add user to database
             add_user(user.id, user.username or 'unknown', user.first_name or 'User')
+            
+            # Mark user as welcomed in this group
+            key = f"{grp_id}_{user.id}"
+            joined_users[key] = True
             
             # Get welcome message
             welcome_msg = get_setting('group_welcome_text', '')
