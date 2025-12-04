@@ -36,7 +36,8 @@ def init_db():
             group_id INTEGER PRIMARY KEY,
             group_username TEXT UNIQUE,
             group_title TEXT,
-            added_date TEXT
+            added_date TEXT,
+            is_active INTEGER DEFAULT 1
         )
     ''')
     
@@ -332,15 +333,29 @@ def add_group(group_id, group_username, group_title):
     return result
 
 def remove_group(group_id):
-    """Remove group"""
+    """Mark group as removed (deactivate, don't delete)"""
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    cursor.execute('DELETE FROM groups WHERE group_id = ?', (group_id,))
+    cursor.execute('UPDATE groups SET is_active = 0 WHERE group_id = ?', (group_id,))
     conn.commit()
     conn.close()
     return True
+
+def is_group_active(group_id):
+    """Check if group is active (not removed)"""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT is_active FROM groups WHERE group_id = ?', (group_id,))
+    result = cursor.fetchone()
+    conn.close()
+    
+    if result:
+        return result[0] == 1
+    return False
 
 def get_all_groups():
     """Get all groups"""

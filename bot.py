@@ -9,7 +9,7 @@ from database import (
     get_all_users, get_stats, increment_messages,
     set_setting, get_setting, add_channel, remove_channel,
     get_all_channels, channel_exists, add_group, remove_group,
-    get_all_groups, group_exists
+    get_all_groups, group_exists, is_group_active
 )
 
 api_id = int(os.getenv('API_ID', '22880380'))
@@ -841,13 +841,17 @@ async def member_joined_handler(event):
 async def group_message_handler(event):
     try:
         if event.is_group:
-            sender = await event.get_sender()
             chat = await event.get_chat()
+            grp_id = chat.id
+            
+            # Ignore messages from removed groups
+            if not is_group_active(grp_id):
+                return
+            
+            sender = await event.get_sender()
             
             if not sender or not chat:
                 return
-            
-            grp_id = chat.id
             grp_name = chat.username or str(chat.id)
             grp_title = chat.title or 'Unknown'
             
@@ -910,22 +914,14 @@ async def check_admin_permission(event, sender_id=None):
 
 @client.on(events.NewMessage(pattern=r'/ban(?:\s+(.+))?'))
 async def ban_handler(event):
-    sender = await event.get_sender()
-    sender_id = sender.id if sender else None
-    
-    print(f"[LOG] 🚫 /ban command received")
-    print(f"[LOG] 👤 Sender: {sender.first_name if sender else 'Unknown'} (ID: {sender_id})")
-    print(f"[LOG] 📍 Chat type: {'Group' if event.is_group else 'Private'}")
-    
-    # If in group, check if group is in database
+    # Ignore commands from removed groups
     if event.is_group:
         chat = await event.get_chat()
-        print(f"[LOG] 📍 Group: {chat.title if chat else 'Unknown'}")
-        
-        if not group_exists(chat.id):
-            print(f"[LOG] ⚠️ Group {chat.title} not in database, ignoring command")
-            await event.respond('⚠️ This group is not registered with the bot!')
+        if not is_group_active(chat.id):
             raise events.StopPropagation
+    
+    sender = await event.get_sender()
+    sender_id = sender.id if sender else None
     
     # Check admin permission (allows anonymous admins too)
     has_permission = await check_admin_permission(event, sender_id)
@@ -1008,22 +1004,14 @@ async def ban_handler(event):
 
 @client.on(events.NewMessage(pattern=r'/unban(?:\s+(.+))?'))
 async def unban_handler(event):
-    sender = await event.get_sender()
-    sender_id = sender.id if sender else None
-    
-    print(f"[LOG] ✅ /unban command received")
-    print(f"[LOG] 👤 Sender: {sender.first_name if sender else 'Unknown'} (ID: {sender_id})")
-    print(f"[LOG] 📍 Chat type: {'Group' if event.is_group else 'Private'}")
-    
-    # If in group, check if group is in database
+    # Ignore commands from removed groups
     if event.is_group:
         chat = await event.get_chat()
-        print(f"[LOG] 📍 Group: {chat.title if chat else 'Unknown'}")
-        
-        if not group_exists(chat.id):
-            print(f"[LOG] ⚠️ Group {chat.title} not in database, ignoring command")
-            await event.respond('⚠️ This group is not registered with the bot!')
+        if not is_group_active(chat.id):
             raise events.StopPropagation
+    
+    sender = await event.get_sender()
+    sender_id = sender.id if sender else None
     
     # Check admin permission (allows anonymous admins too)
     has_permission = await check_admin_permission(event, sender_id)
@@ -1108,22 +1096,14 @@ async def unban_handler(event):
 
 @client.on(events.NewMessage(pattern=r'/info(?:\s+(.+))?'))
 async def info_handler(event):
-    sender = await event.get_sender()
-    sender_id = sender.id if sender else None
-    
-    print(f"[LOG] ℹ️ /info command received")
-    print(f"[LOG] 👤 Sender: {sender.first_name if sender else 'Unknown'} (ID: {sender_id})")
-    print(f"[LOG] 📍 Chat type: {'Group' if event.is_group else 'Private'}")
-    
-    # If in group, check if group is in database
+    # Ignore commands from removed groups
     if event.is_group:
         chat = await event.get_chat()
-        print(f"[LOG] 📍 Group: {chat.title if chat else 'Unknown'}")
-        
-        if not group_exists(chat.id):
-            print(f"[LOG] ⚠️ Group {chat.title} not in database, ignoring command")
-            await event.respond('⚠️ This group is not registered with the bot!')
+        if not is_group_active(chat.id):
             raise events.StopPropagation
+    
+    sender = await event.get_sender()
+    sender_id = sender.id if sender else None
     
     # Check admin permission (allows anonymous admins too)
     has_permission = await check_admin_permission(event, sender_id)
