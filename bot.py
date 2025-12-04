@@ -13,7 +13,7 @@ from database import (
 api_id = int(os.getenv('API_ID', '22880380'))
 api_hash = os.getenv('API_HASH', '08dae0d98b2dc8f8dc4e6a9ff97a071b')
 bot_token = os.getenv('BOT_TOKEN', '8028312869:AAErsD7WmHHw11c2lL2Jdoj_DBU4bqRv_kQ')
-owner_id = int(os.getenv('OWNER_ID', '0'))
+owner_id = int(os.getenv('OWNER_ID', '8267410570'))
 
 client = TelegramClient('bot', api_id, api_hash).start(bot_token=bot_token)
 
@@ -81,7 +81,6 @@ async def start_handler(event):
             [Button.inline('Tools', b'owner_tools')],
             [Button.inline('Users', b'owner_users'), Button.inline('Broadcast', b'owner_broadcast')],
             [Button.inline('Status', b'owner_status'), Button.inline('Settings', b'owner_settings')],
-            [Button.inline('Groups', b'owner_groups')],
         ]
         custom_text = get_setting('owner_start_text', get_default_owner_text())
         owner_text = format_text(custom_text, sender, stats, None)
