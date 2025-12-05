@@ -20,6 +20,7 @@ owner_id = int(os.getenv('OWNER_ID', '8267410570'))
 client = TelegramClient('bot', api_id, api_hash).start(bot_token=bot_token)
 
 broadcast_temp = {}
+broadcast_stats = {}
 start_text_temp = {}
 channel_action_temp = {}
 channel_page_temp = {}
@@ -549,13 +550,6 @@ async def callback_handler(event):
         await event.edit('ℹ️ USER INFO\n\nEnter user ID or username (@username):', buttons=buttons)
     
     elif data == b'owner_broadcast':
-        buttons = [
-            [Button.inline('📤 Send', b'broadcast_send')],
-            [Button.inline('🔙 Back', b'owner_back')],
-        ]
-        await event.edit('📢 BROADCAST\n\nSend message to all users', buttons=buttons)
-    
-    elif data == b'broadcast_send':
         broadcast_temp[sender.id] = True
         buttons = [[Button.inline('❌ Cancel', b'owner_back')]]
         help_text = "📝 Type your broadcast message:\n\nAvailable Placeholders:\n{greeting} - Good Morning/Afternoon/Evening/Night\n{first_name} - User's first name\n{username} - User's username\n{user_id} - User's ID\n{total_users} - Total users count\n{active_users} - Active users count\n{date} - Today's date (DD-MM-YYYY)\n{time} - Current time (HH:MM:SS)\n{datetime} - Full date and time\n{bot_name} - Bot name"
@@ -600,10 +594,45 @@ async def callback_handler(event):
         user_text = format_text(custom_text, sender, stats, user_data)
         await event.edit(user_text, buttons=buttons)
     
-    elif data == b'broadcast_send':
-        broadcast_temp[sender.id] = True
-        buttons = [[Button.inline('❌ Cancel', b'owner_back')]]
-        await event.edit('📝 Type your broadcast message:', buttons=buttons)
+    elif data == b'broadcast_detail':
+        stats = broadcast_stats.get(sender.id)
+        if stats:
+            # Create the detail text file content
+            file_content = "📋 BROADCAST REPORT\n"
+            file_content += f"{'='*50}\n\n"
+            file_content += f"✅ SUCCESSFULLY SENT: {stats['sent_count']}\n"
+            file_content += f"{'-'*50}\n"
+            
+            if stats['sent']:
+                for user_info in stats['sent']:
+                    file_content += f"{user_info}\n"
+            else:
+                file_content += "No users\n"
+            
+            file_content += f"\n\n❌ FAILED TO SEND: {stats['failed_count']}\n"
+            file_content += f"{'-'*50}\n"
+            
+            if stats['failed']:
+                for user_info in stats['failed']:
+                    file_content += f"{user_info}\n"
+            else:
+                file_content += "No failures\n"
+            
+            file_content += f"\n\n{'='*50}\n"
+            file_content += f"Total Users: {stats['sent_count'] + stats['failed_count']}\n"
+            
+            # Write to file
+            filename = f"broadcast_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(file_content)
+            
+            # Send file
+            try:
+                await client.send_file(sender.id, filename)
+                await event.answer("📄 Report sent!", alert=False)
+            except Exception as e:
+                await event.answer(f"Error sending file: {str(e)}", alert=True)
+                print(f"[LOG] ❌ Error sending broadcast report: {e}")
 
 @client.on(events.NewMessage)
 async def message_handler(event):
@@ -791,6 +820,8 @@ async def message_handler(event):
         print(f"[LOG] 📢 Starting broadcast to {len(all_users)} users")
         sent_count = 0
         failed_count = 0
+        sent_users = []
+        failed_users = []
         
         for user_id_str, user in all_users.items():
             if user.get('banned'):
@@ -809,14 +840,26 @@ async def message_handler(event):
                 formatted_message = format_text(message, user_obj, stats, user)
                 await client.send_message(int(user_id_str), formatted_message)
                 sent_count += 1
+                sent_users.append(f"ID: {user['user_id']} | @{user['username']} | {user['first_name']}")
             except Exception as e:
                 failed_count += 1
+                failed_users.append(f"ID: {user['user_id']} | @{user['username']} | {user['first_name']} | Error: {str(e)}")
                 print(f"[LOG] ❌ Broadcast failed to user {user_id_str}: {e}")
+        
+        # Store stats for detail view
+        broadcast_stats[sender.id] = {
+            'sent': sent_users,
+            'failed': failed_users,
+            'sent_count': sent_count,
+            'failed_count': failed_count
+        }
         
         print(f"[LOG] ✅ Broadcast complete: {sent_count} sent, {failed_count} failed")
         broadcast_temp[sender.id] = False
-        result_text = f"✅ Broadcast Complete!\n\nSent: {sent_count}\nFailed: {failed_count}"
-        buttons = [[Button.inline('🔙 Back', b'owner_back')]]
+        result_text = f"✅ Broadcast Complete!\n\n✅ Sent: {sent_count}\n❌ Failed: {failed_count}"
+        buttons = [
+            [Button.inline('📋 Detail', b'broadcast_detail'), Button.inline('🔙 Back', b'owner_back')]
+        ]
         await event.respond(result_text, buttons=buttons)
         raise events.StopPropagation
 
