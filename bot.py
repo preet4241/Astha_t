@@ -555,6 +555,12 @@ async def callback_handler(event):
         ]
         await event.edit('📢 BROADCAST\n\nSend message to all users', buttons=buttons)
     
+    elif data == b'broadcast_send':
+        broadcast_temp[sender.id] = True
+        buttons = [[Button.inline('❌ Cancel', b'owner_back')]]
+        help_text = "📝 Type your broadcast message:\n\nAvailable Placeholders:\n{greeting} - Good Morning/Afternoon/Evening/Night\n{first_name} - User's first name\n{username} - User's username\n{user_id} - User's ID\n{total_users} - Total users count\n{active_users} - Active users count\n{date} - Today's date (DD-MM-YYYY)\n{time} - Current time (HH:MM:SS)\n{datetime} - Full date and time\n{bot_name} - Bot name"
+        await event.edit(help_text, buttons=buttons)
+    
     elif data == b'owner_status':
         stats = get_stats()
         current_time = datetime.now().strftime("%H:%M:%S")
@@ -791,7 +797,17 @@ async def message_handler(event):
                 continue
             
             try:
-                await client.send_message(int(user_id_str), message)
+                # Create a temporary user object for formatting
+                class UserObj:
+                    def __init__(self, user_data):
+                        self.first_name = user_data.get('first_name', 'User')
+                        self.username = user_data.get('username', 'user')
+                        self.id = user_data.get('user_id', 0)
+                
+                user_obj = UserObj(user)
+                # Format message with placeholders for each user
+                formatted_message = format_text(message, user_obj, stats, user)
+                await client.send_message(int(user_id_str), formatted_message)
                 sent_count += 1
             except Exception as e:
                 failed_count += 1
@@ -799,8 +815,8 @@ async def message_handler(event):
         
         print(f"[LOG] ✅ Broadcast complete: {sent_count} sent, {failed_count} failed")
         broadcast_temp[sender.id] = False
-        result_text = f"Broadcast Complete!\n\nSent: {sent_count}\nFailed: {failed_count}"
-        buttons = [[Button.inline('Back', b'owner_back')]]
+        result_text = f"✅ Broadcast Complete!\n\nSent: {sent_count}\nFailed: {failed_count}"
+        buttons = [[Button.inline('🔙 Back', b'owner_back')]]
         await event.respond(result_text, buttons=buttons)
         raise events.StopPropagation
 
