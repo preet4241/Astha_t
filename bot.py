@@ -6,6 +6,7 @@ import asyncio
 import re
 import json
 import aiohttp
+import shutil
 from datetime import datetime, timedelta
 from database import (
     add_user, get_user, ban_user, unban_user,
@@ -14,7 +15,9 @@ from database import (
     get_all_channels, channel_exists, add_group, remove_group,
     get_all_groups, group_exists, is_group_active,
     set_tool_status, get_tool_status, get_all_active_tools,
-    get_tool_apis, add_tool_api, remove_tool_api, get_random_tool_api
+    get_tool_apis, add_tool_api, remove_tool_api, get_random_tool_api,
+    set_backup_channel, get_backup_channel, set_backup_interval, 
+    get_backup_interval, set_last_backup_time, get_last_backup_time
 )
 
 api_id = int(os.getenv('API_ID', '22880380'))
@@ -35,6 +38,7 @@ user_action_temp = {}
 user_action_type = {}
 tool_session = {}
 tool_api_action = {}
+backup_channel_temp = {}
 
 TOOL_CONFIG = {
     'number_info': {
@@ -634,7 +638,62 @@ async def callback_handler(event):
         await event.edit(settings_text, buttons=buttons)
 
     elif data == b'setting_backup':
-        await event.edit('💾 BACKUP\n\nBot backup feature coming soon...', buttons=[[Button.inline('🔙 Back', b'owner_settings')]])
+        backup_channel = get_backup_channel()
+        if not backup_channel:
+            buttons = [[Button.inline('🔙 Back', b'owner_settings')]]
+            await event.edit('💾 BACKUP\n\n⚠️ Please set backup channel first!\n\nSend me one of:\n- Channel ID (number)\n- @username\n- Forward a message from the channel', buttons=buttons)
+            backup_channel_temp[sender.id] = 'add'
+        else:
+            interval = get_backup_interval()
+            buttons = [
+                [Button.inline('🔄 Change Channel', b'backup_change_channel')],
+                [Button.inline('⏰ Interval Time', b'backup_interval'), Button.inline('💾 Backup Now', b'backup_now')],
+                [Button.inline('🔙 Back', b'owner_settings')],
+            ]
+            backup_text = f"💾 BACKUP SETTINGS\n\n📺 Channel: {backup_channel['title']}\n@{backup_channel['username']}\n\n⏰ Interval: {interval} hours"
+            await event.edit(backup_text, buttons=buttons)
+    
+    elif data == b'backup_change_channel':
+        buttons = [[Button.inline('🔙 Back', b'setting_backup')]]
+        await event.edit('🔄 CHANGE BACKUP CHANNEL\n\nSend me one of:\n- Channel ID (number)\n- @username\n- Forward a message from the channel', buttons=buttons)
+        backup_channel_temp[sender.id] = 'add'
+    
+    elif data == b'backup_interval':
+        buttons = [[Button.inline('🔙 Back', b'setting_backup')]]
+        await event.edit('⏰ SET BACKUP INTERVAL\n\nSend interval in hours (e.g., 24, 12, 6):', buttons=buttons)
+        backup_channel_temp[sender.id] = 'interval'
+    
+    elif data == b'backup_now':
+        backup_channel = get_backup_channel()
+        if not backup_channel:
+            await event.answer('❌ No backup channel set!', alert=True)
+        else:
+            try:
+                import shutil
+                backup_file = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                shutil.copy(DB_FILE, backup_file)
+                
+                await client.send_file(
+                    backup_channel['channel_id'],
+                    backup_file,
+                    caption=f"💾 Database Backup\n\n📅 Date: {datetime.now().strftime('%d-%m-%Y')}\n⏰ Time: {datetime.now().strftime('%H:%M:%S')}"
+                )
+                
+                os.remove(backup_file)
+                set_last_backup_time(datetime.now().isoformat())
+                
+                await event.answer('✅ Backup sent successfully!', alert=True)
+                buttons = [
+                    [Button.inline('🔄 Change Channel', b'backup_change_channel')],
+                    [Button.inline('⏰ Interval Time', b'backup_interval'), Button.inline('💾 Backup Now', b'backup_now')],
+                    [Button.inline('🔙 Back', b'owner_settings')],
+                ]
+                interval = get_backup_interval()
+                backup_text = f"💾 BACKUP SETTINGS\n\n📺 Channel: {backup_channel['title']}\n@{backup_channel['username']}\n\n⏰ Interval: {interval} hours\n\n✅ Last Backup: Just now"
+                await event.edit(backup_text, buttons=buttons)
+            except Exception as e:
+                await event.answer(f'❌ Backup failed: {str(e)}', alert=True)
+                print(f"[LOG] ❌ Backup error: {e}")
 
     elif data == b'setting_tools_handler':
         tools_map = [
@@ -1483,6 +1542,75 @@ async def message_handler(event):
             else:
                 back_btn = b'owner_tools' if sender.id == owner_id else b'user_tools'
                 await event.respond(f"❌ Invalid input!\n\n{TOOL_CONFIG[tool_key]['prompt']}", buttons=[[Button.inline('❌ Cancel', back_btn)]])
+        raise events.StopPropagation
+
+    if backup_channel_temp.get(sender.id) == 'interval':
+        try:
+            interval = int(event.text.strip())
+            if interval <= 0:
+                await event.respond('❌ Invalid interval! Must be a positive number.', buttons=[[Button.inline('🔙 Back', b'setting_backup')]])
+            else:
+                set_backup_interval(interval)
+                backup_channel_temp[sender.id] = None
+                backup_channel = get_backup_channel()
+                buttons = [
+                    [Button.inline('🔄 Change Channel', b'backup_change_channel')],
+                    [Button.inline('⏰ Interval Time', b'backup_interval'), Button.inline('💾 Backup Now', b'backup_now')],
+                    [Button.inline('🔙 Back', b'owner_settings')],
+                ]
+                backup_text = f"💾 BACKUP SETTINGS\n\n📺 Channel: {backup_channel['title']}\n@{backup_channel['username']}\n\n⏰ Interval: {interval} hours\n\n✅ Interval updated successfully!"
+                await event.respond(backup_text, buttons=buttons)
+        except ValueError:
+            await event.respond('❌ Invalid number! Send interval in hours.', buttons=[[Button.inline('🔙 Back', b'setting_backup')]])
+        raise events.StopPropagation
+    
+    if backup_channel_temp.get(sender.id) == 'add':
+        ch_id = None
+        ch_name = None
+        ch_title = None
+
+        if event.forward and event.forward.chat:
+            try:
+                channel_entity = await client.get_entity(event.forward.chat)
+                ch_id = channel_entity.id
+                ch_name = channel_entity.username or str(channel_entity.id)
+                ch_title = channel_entity.title
+            except Exception as e:
+                await event.respond(f'❌ Error extracting channel: {str(e)}')
+                return
+        elif event.text:
+            ch_input = event.text.strip()
+            if ch_input.lstrip('-').isdigit():
+                ch_id = int(ch_input)
+                ch_name = ch_input
+                ch_title = ch_input
+            elif ch_input.startswith('@'):
+                try:
+                    channel_entity = await client.get_entity(ch_input)
+                    ch_id = channel_entity.id
+                    ch_name = channel_entity.username or str(channel_entity.id)
+                    ch_title = channel_entity.title
+                except Exception as e:
+                    await event.respond(f'❌ Error finding channel: {str(e)}')
+                    return
+            else:
+                await event.respond('❌ Invalid format. Use: ID number, @username, or forward message.', buttons=[[Button.inline('🔙 Back', b'setting_backup')]])
+                return
+
+        if not ch_id or not ch_name:
+            await event.respond('❌ Send one of: ID, @username, or forward a message.', buttons=[[Button.inline('🔙 Back', b'setting_backup')]])
+            return
+
+        set_backup_channel(ch_id, ch_name, ch_title)
+        backup_channel_temp[sender.id] = None
+        interval = get_backup_interval()
+        buttons = [
+            [Button.inline('🔄 Change Channel', b'backup_change_channel')],
+            [Button.inline('⏰ Interval Time', b'backup_interval'), Button.inline('💾 Backup Now', b'backup_now')],
+            [Button.inline('🔙 Back', b'owner_settings')],
+        ]
+        backup_text = f"💾 BACKUP SETTINGS\n\n📺 Channel: {ch_title}\n@{ch_name}\n\n⏰ Interval: {interval} hours\n\n✅ Backup channel set successfully!"
+        await event.respond(backup_text, buttons=buttons)
         raise events.StopPropagation
 
     if channel_action_temp.get(sender.id) == 'add':

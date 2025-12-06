@@ -532,3 +532,39 @@ def group_exists(group_id):
     conn.close()
     
     return exists
+
+def set_backup_channel(channel_id, channel_username, channel_title):
+    """Set backup channel for database backups"""
+    set_setting('backup_channel_id', str(channel_id))
+    set_setting('backup_channel_username', channel_username)
+    set_setting('backup_channel_title', channel_title)
+    return True
+
+def get_backup_channel():
+    """Get backup channel details"""
+    channel_id = get_setting('backup_channel_id', '')
+    if not channel_id:
+        return None
+    
+    return {
+        'channel_id': int(channel_id),
+        'username': get_setting('backup_channel_username', ''),
+        'title': get_setting('backup_channel_title', '')
+    }
+
+def set_backup_interval(hours):
+    """Set backup interval in hours"""
+    set_setting('backup_interval', str(hours))
+    return True
+
+def get_backup_interval():
+    """Get backup interval in hours (default 24)"""
+    return int(get_setting('backup_interval', '24'))
+
+def set_last_backup_time(timestamp):
+    """Set last backup timestamp"""
+    set_setting('last_backup_time', timestamp)
+
+def get_last_backup_time():
+    """Get last backup timestamp"""
+    return get_setting('last_backup_time', '')
