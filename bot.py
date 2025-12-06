@@ -780,10 +780,52 @@ async def callback_handler(event):
         await event.edit(status_text, buttons=buttons)
     
     elif data == b'owner_tools':
-        await event.edit('🛠️ Tools (coming soon...)', buttons=[[Button.inline('🔙 Back', b'owner_back')]])
+        buttons = []
+        tools_map = [
+            ('📱 Number Info', b'tool_number_info'),
+            ('🆔 Aadhar Info', b'tool_aadhar_info'),
+            ('👨‍👩‍👧‍👦 Aadhar to Family', b'tool_aadhar_family'),
+            ('🚗 Vehicle Info', b'tool_vehicle_info'),
+            ('🏦 IFSC Info', b'tool_ifsc_info'),
+            ('🇵🇰 Pak Num Info', b'tool_pak_num'),
+            ('📍 Pin Code Info', b'tool_pincode_info'),
+            ('📱 IMEI Info', b'tool_imei_info'),
+            ('🌐 IP Info', b'tool_ip_info'),
+        ]
+        
+        row = []
+        for idx, (tool_name, callback) in enumerate(tools_map):
+            row.append(Button.inline(tool_name, callback))
+            if len(row) == 2 or idx == len(tools_map) - 1:
+                buttons.append(row)
+                row = []
+        
+        buttons.append([Button.inline('🔙 Back', b'owner_back')])
+        await event.edit('🛠️ TOOLS\n\nSelect a tool to use:', buttons=buttons)
     
     elif data == b'user_tools':
-        await event.edit('🛠️ User Tools (coming soon...)', buttons=[[Button.inline('🔙 Back', b'user_back')]])
+        buttons = []
+        tools_map = [
+            ('📱 Number Info', b'tool_number_info'),
+            ('🆔 Aadhar Info', b'tool_aadhar_info'),
+            ('👨‍👩‍👧‍👦 Aadhar to Family', b'tool_aadhar_family'),
+            ('🚗 Vehicle Info', b'tool_vehicle_info'),
+            ('🏦 IFSC Info', b'tool_ifsc_info'),
+            ('🇵🇰 Pak Num Info', b'tool_pak_num'),
+            ('📍 Pin Code Info', b'tool_pincode_info'),
+            ('📱 IMEI Info', b'tool_imei_info'),
+            ('🌐 IP Info', b'tool_ip_info'),
+        ]
+        
+        row = []
+        for idx, (tool_name, callback) in enumerate(tools_map):
+            row.append(Button.inline(tool_name, callback))
+            if len(row) == 2 or idx == len(tools_map) - 1:
+                buttons.append(row)
+                row = []
+        
+        buttons.append([Button.inline('🔙 Back', b'user_back')])
+        await event.edit('🛠️ TOOLS\n\nSelect a tool to use:', buttons=buttons)
     
     elif data == b'user_profile':
         user = get_user(sender.id)
