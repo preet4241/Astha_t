@@ -1383,9 +1383,68 @@ async def callback_handler(event):
 
     elif data == b'owner_status':
         stats = get_stats()
+        
+        # Get current date and time
+        current_date = datetime.now().strftime("%d-%m-%Y")
         current_time = datetime.now().strftime("%H:%M:%S")
-        status_text = f"📊 BOT STATUS\n\nUsers: {stats['total_users']}\nActive: {stats['active_users']}\nMessages: {stats['total_messages']}\nTime: {current_time}"
-        buttons = [[Button.inline('🔙 Back', b'owner_back')]]
+        
+        # Get active tools count
+        active_tools = get_all_active_tools()
+        tools_count = len(active_tools)
+        
+        # Get channels and groups count
+        channels = get_all_channels()
+        groups = get_all_groups()
+        
+        # Get backup info
+        backup_channel = get_backup_channel()
+        backup_interval = get_backup_interval()
+        last_backup = get_last_backup_time()
+        
+        if last_backup:
+            try:
+                last_backup_dt = datetime.fromisoformat(last_backup)
+                last_backup_str = last_backup_dt.strftime("%d-%m-%Y %H:%M:%S")
+            except:
+                last_backup_str = "Never"
+        else:
+            last_backup_str = "Never"
+        
+        # Build status text
+        status_text = f"📊 **BOT STATUS DASHBOARD**\n"
+        status_text += f"{'='*35}\n\n"
+        
+        status_text += f"👥 **Users Statistics:**\n"
+        status_text += f"├ Total Users: {stats['total_users']}\n"
+        status_text += f"├ Active Users: {stats['active_users']}\n"
+        status_text += f"└ Banned Users: {stats['banned_users']}\n\n"
+        
+        status_text += f"💬 **Messages:**\n"
+        status_text += f"└ Total Messages: {stats['total_messages']}\n\n"
+        
+        status_text += f"🛠️ **Tools:**\n"
+        status_text += f"└ Active Tools: {tools_count}/9\n\n"
+        
+        status_text += f"📺 **Channels & Groups:**\n"
+        status_text += f"├ Sub-Force Channels: {len(channels)}\n"
+        status_text += f"└ Connected Groups: {len(groups)}\n\n"
+        
+        status_text += f"💾 **Backup Info:**\n"
+        if backup_channel:
+            status_text += f"├ Channel: @{backup_channel['username']}\n"
+            status_text += f"├ Interval: {backup_interval} minutes\n"
+            status_text += f"└ Last Backup: {last_backup_str}\n\n"
+        else:
+            status_text += f"└ No backup configured\n\n"
+        
+        status_text += f"⏰ **System Time:**\n"
+        status_text += f"├ Date: {current_date}\n"
+        status_text += f"└ Time: {current_time}\n\n"
+        
+        status_text += f"{'='*35}\n"
+        status_text += f"✅ **Status:** Online & Running"
+        
+        buttons = [[Button.inline('🔄 Refresh', b'owner_status'), Button.inline('🔙 Back', b'owner_back')]]
         await event.edit(status_text, buttons=buttons)
 
     elif data == b'owner_tools':
@@ -1692,7 +1751,7 @@ async def message_handler(event):
             await event.respond('❌ Please send a valid .db database file!', buttons=[[Button.inline('🔙 Back', b'setting_backup')]])
         raise events.StopPropagation
     
-    if backup_channel_temp.get(sender.id) == 'add':
+    if sender.id == owner_id and backup_channel_temp.get(sender.id) == 'add':
         ch_id = None
         ch_name = None
         ch_title = None
@@ -1737,7 +1796,7 @@ async def message_handler(event):
             [Button.inline('⏰ Interval Time', b'backup_interval'), Button.inline('💾 Backup Now', b'backup_now')],
             [Button.inline('🔙 Back', b'owner_settings')],
         ]
-        backup_text = f"💾 BACKUP SETTINGS\n\n📺 Channel: {ch_title}\n@{ch_name}\n\n⏰ Interval: {interval} hours\n\n✅ Backup channel set successfully!"
+        backup_text = f"💾 BACKUP SETTINGS\n\n📺 Channel: {ch_title}\n@{ch_name}\n\n⏰ Interval: {interval} minutes\n\n✅ Backup channel set successfully!"
         await event.respond(backup_text, buttons=buttons)
         raise events.StopPropagation
 
