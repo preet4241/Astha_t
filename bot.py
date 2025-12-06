@@ -475,31 +475,83 @@ async def callback_handler(event):
             [Button.inline('🆔 Aadhar Info', b'tool_aadhar_info'), Button.inline('👨‍👩‍👧‍👦 Aadhar to Family', b'tool_aadhar_family')],
             [Button.inline('🚗 Vehicle Info', b'tool_vehicle_info'), Button.inline('🏦 IFSC Info', b'tool_ifsc_info')],
             [Button.inline('🇵🇰 Pak Num Info', b'tool_pak_num'), Button.inline('📍 Pin Code Info', b'tool_pincode_info')],
+            [Button.inline('📱 IMEI Info', b'tool_imei_info'), Button.inline('🌐 IP Info', b'tool_ip_info')],
             [Button.inline('🔙 Back', b'owner_settings')],
         ]
         tools_text = "🛠️ TOOLS HANDLER\n\nSelect a tool:"
         await event.edit(tools_text, buttons=buttons)
     
     elif data == b'tool_number_info':
-        await event.edit('📱 Number Info: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_number_add_api'), Button.inline('➖ Remove API', b'tool_number_remove_api')],
+            [Button.inline('📋 All API', b'tool_number_all_api'), Button.inline('📊 Status', b'tool_number_status')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('📱 NUMBER INFO\n\nManage Number Info APIs', buttons=buttons)
     
     elif data == b'tool_aadhar_info':
-        await event.edit('🆔 Aadhar Info: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_aadhar_add_api'), Button.inline('➖ Remove API', b'tool_aadhar_remove_api')],
+            [Button.inline('📋 All API', b'tool_aadhar_all_api'), Button.inline('📊 Status', b'tool_aadhar_status')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('🆔 AADHAR INFO\n\nManage Aadhar Info APIs', buttons=buttons)
     
     elif data == b'tool_aadhar_family':
-        await event.edit('👨‍👩‍👧‍👦 Aadhar to Family: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_family_add_api'), Button.inline('➖ Remove API', b'tool_family_remove_api')],
+            [Button.inline('📋 All API', b'tool_family_all_api'), Button.inline('📊 Status', b'tool_family_status')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('👨‍👩‍👧‍👦 AADHAR TO FAMILY\n\nManage Aadhar to Family APIs', buttons=buttons)
     
     elif data == b'tool_vehicle_info':
-        await event.edit('🚗 Vehicle Info: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_vehicle_add_api'), Button.inline('➖ Remove API', b'tool_vehicle_remove_api')],
+            [Button.inline('📋 All API', b'tool_vehicle_all_api'), Button.inline('📊 Status', b'tool_vehicle_status')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('🚗 VEHICLE INFO\n\nManage Vehicle Info APIs', buttons=buttons)
     
     elif data == b'tool_ifsc_info':
-        await event.edit('🏦 IFSC Info: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_ifsc_add_api'), Button.inline('➖ Remove API', b'tool_ifsc_remove_api')],
+            [Button.inline('📋 All API', b'tool_ifsc_all_api'), Button.inline('📊 Status', b'tool_ifsc_status')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('🏦 IFSC INFO\n\nManage IFSC Info APIs', buttons=buttons)
     
     elif data == b'tool_pak_num':
-        await event.edit('🇵🇰 Pak Num Info: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_pak_add_api'), Button.inline('➖ Remove API', b'tool_pak_remove_api')],
+            [Button.inline('📋 All API', b'tool_pak_all_api'), Button.inline('📊 Status', b'tool_pak_status')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('🇵🇰 PAK NUM INFO\n\nManage Pak Number APIs', buttons=buttons)
     
     elif data == b'tool_pincode_info':
-        await event.edit('📍 Pin Code Info: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_tools_handler')]])
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_pin_add_api'), Button.inline('➖ Remove API', b'tool_pin_remove_api')],
+            [Button.inline('📋 All API', b'tool_pin_all_api'), Button.inline('📊 Status', b'tool_pin_status')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('📍 PIN CODE INFO\n\nManage Pin Code APIs', buttons=buttons)
+    
+    elif data == b'tool_imei_info':
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_imei_add_api'), Button.inline('➖ Remove API', b'tool_imei_remove_api')],
+            [Button.inline('📋 All API', b'tool_imei_all_api'), Button.inline('📊 Status', b'tool_imei_status')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('📱 IMEI INFO\n\nManage IMEI Info APIs', buttons=buttons)
+    
+    elif data == b'tool_ip_info':
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_ip_add_api'), Button.inline('➖ Remove API', b'tool_ip_remove_api')],
+            [Button.inline('📋 All API', b'tool_ip_all_api'), Button.inline('📊 Status', b'tool_ip_status')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('🌐 IP INFO\n\nManage IP Info APIs', buttons=buttons)
     
     elif data == b'setting_groups':
         groups = get_all_groups()
