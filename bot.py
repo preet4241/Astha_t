@@ -685,6 +685,47 @@ async def callback_handler(event):
         ]
         await event.edit('📱 NUMBER INFO\n\nManage Number Info APIs', buttons=buttons)
 
+    elif data == b'tool_number_add_api':
+        tool_api_action[sender.id] = 'number_info'
+        placeholder = TOOL_CONFIG['number_info']['placeholder']
+        buttons = [[Button.inline('❌ Cancel', b'tool_number_info')]]
+        await event.edit(f'➕ ADD API for Number Info\n\nSend API URL with placeholder {placeholder}\n\nExample:\nhttps://api.example.com/search?number={placeholder}', buttons=buttons)
+
+    elif data == b'tool_number_remove_api':
+        apis = get_tool_apis('number_info')
+        if not apis:
+            await event.edit('❌ No APIs found!', buttons=[[Button.inline('🔙 Back', b'tool_number_info')]])
+        else:
+            buttons = []
+            for api in apis:
+                api_preview = api['url'][:40] + '...' if len(api['url']) > 40 else api['url']
+                buttons.append([Button.inline(f'❌ {api_preview}', f'remove_number_api_{api["id"]}'.encode())])
+            buttons.append([Button.inline('🔙 Back', b'tool_number_info')])
+            await event.edit('➖ REMOVE API\n\nSelect API to remove:', buttons=buttons)
+
+    elif data.startswith(b'remove_number_api_'):
+        api_id = int(data.decode().split('_')[3])
+        remove_tool_api('number_info', api_id)
+        await event.edit('✅ API removed!', buttons=[[Button.inline('🔙 Back', b'tool_number_info')]])
+
+    elif data == b'tool_number_all_api':
+        apis = get_tool_apis('number_info')
+        if not apis:
+            text = '📋 ALL APIs\n\nNo APIs configured yet.'
+        else:
+            text = f'📋 ALL APIs ({len(apis)})\n\n'
+            for i, api in enumerate(apis, 1):
+                text += f'{i}. {api["url"]}\n   Added: {api["added_date"][:10]}\n\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_number_info')]])
+
+    elif data == b'tool_number_status':
+        apis = get_tool_apis('number_info')
+        status = get_tool_status('number_info')
+        text = f'📊 NUMBER INFO STATUS\n\n'
+        text += f'Tool Status: {"✅ Active" if status else "❌ Inactive"}\n'
+        text += f'APIs Configured: {len(apis)}\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_number_info')]])
+
     elif data == b'tool_aadhar_info':
         status = get_tool_status('aadhar_info')
         status_text = '✅ Active' if status else '❌ Inactive'
@@ -709,6 +750,47 @@ async def callback_handler(event):
         ]
         await event.edit('🆔 AADHAR INFO\n\nManage Aadhar Info APIs', buttons=buttons)
 
+    elif data == b'tool_aadhar_add_api':
+        tool_api_action[sender.id] = 'aadhar_info'
+        placeholder = TOOL_CONFIG['aadhar_info']['placeholder']
+        buttons = [[Button.inline('❌ Cancel', b'tool_aadhar_info')]]
+        await event.edit(f'➕ ADD API for Aadhar Info\n\nSend API URL with placeholder {placeholder}\n\nExample:\nhttps://api.example.com/aadhar?id={placeholder}', buttons=buttons)
+
+    elif data == b'tool_aadhar_remove_api':
+        apis = get_tool_apis('aadhar_info')
+        if not apis:
+            await event.edit('❌ No APIs found!', buttons=[[Button.inline('🔙 Back', b'tool_aadhar_info')]])
+        else:
+            buttons = []
+            for api in apis:
+                api_preview = api['url'][:40] + '...' if len(api['url']) > 40 else api['url']
+                buttons.append([Button.inline(f'❌ {api_preview}', f'remove_aadhar_api_{api["id"]}'.encode())])
+            buttons.append([Button.inline('🔙 Back', b'tool_aadhar_info')])
+            await event.edit('➖ REMOVE API\n\nSelect API to remove:', buttons=buttons)
+
+    elif data.startswith(b'remove_aadhar_api_'):
+        api_id = int(data.decode().split('_')[3])
+        remove_tool_api('aadhar_info', api_id)
+        await event.edit('✅ API removed!', buttons=[[Button.inline('🔙 Back', b'tool_aadhar_info')]])
+
+    elif data == b'tool_aadhar_all_api':
+        apis = get_tool_apis('aadhar_info')
+        if not apis:
+            text = '📋 ALL APIs\n\nNo APIs configured yet.'
+        else:
+            text = f'📋 ALL APIs ({len(apis)})\n\n'
+            for i, api in enumerate(apis, 1):
+                text += f'{i}. {api["url"]}\n   Added: {api["added_date"][:10]}\n\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_aadhar_info')]])
+
+    elif data == b'tool_aadhar_status':
+        apis = get_tool_apis('aadhar_info')
+        status = get_tool_status('aadhar_info')
+        text = f'📊 AADHAR INFO STATUS\n\n'
+        text += f'Tool Status: {"✅ Active" if status else "❌ Inactive"}\n'
+        text += f'APIs Configured: {len(apis)}\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_aadhar_info')]])
+
     elif data == b'tool_aadhar_family':
         status = get_tool_status('aadhar_family')
         status_text = '✅ Active' if status else '❌ Inactive'
@@ -732,6 +814,47 @@ async def callback_handler(event):
             [Button.inline('🔙 Back', b'setting_tools_handler')],
         ]
         await event.edit('👨‍👩‍👧‍👦 AADHAR TO FAMILY\n\nManage Aadhar to Family APIs', buttons=buttons)
+
+    elif data == b'tool_family_add_api':
+        tool_api_action[sender.id] = 'aadhar_family'
+        placeholder = TOOL_CONFIG['aadhar_family']['placeholder']
+        buttons = [[Button.inline('❌ Cancel', b'tool_aadhar_family')]]
+        await event.edit(f'➕ ADD API for Aadhar Family\n\nSend API URL with placeholder {placeholder}', buttons=buttons)
+
+    elif data == b'tool_family_remove_api':
+        apis = get_tool_apis('aadhar_family')
+        if not apis:
+            await event.edit('❌ No APIs found!', buttons=[[Button.inline('🔙 Back', b'tool_aadhar_family')]])
+        else:
+            buttons = []
+            for api in apis:
+                api_preview = api['url'][:40] + '...' if len(api['url']) > 40 else api['url']
+                buttons.append([Button.inline(f'❌ {api_preview}', f'remove_family_api_{api["id"]}'.encode())])
+            buttons.append([Button.inline('🔙 Back', b'tool_aadhar_family')])
+            await event.edit('➖ REMOVE API\n\nSelect API to remove:', buttons=buttons)
+
+    elif data.startswith(b'remove_family_api_'):
+        api_id = int(data.decode().split('_')[3])
+        remove_tool_api('aadhar_family', api_id)
+        await event.edit('✅ API removed!', buttons=[[Button.inline('🔙 Back', b'tool_aadhar_family')]])
+
+    elif data == b'tool_family_all_api':
+        apis = get_tool_apis('aadhar_family')
+        if not apis:
+            text = '📋 ALL APIs\n\nNo APIs configured yet.'
+        else:
+            text = f'📋 ALL APIs ({len(apis)})\n\n'
+            for i, api in enumerate(apis, 1):
+                text += f'{i}. {api["url"]}\n   Added: {api["added_date"][:10]}\n\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_aadhar_family')]])
+
+    elif data == b'tool_family_status':
+        apis = get_tool_apis('aadhar_family')
+        status = get_tool_status('aadhar_family')
+        text = f'📊 AADHAR FAMILY STATUS\n\n'
+        text += f'Tool Status: {"✅ Active" if status else "❌ Inactive"}\n'
+        text += f'APIs Configured: {len(apis)}\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_aadhar_family')]])
 
     elif data == b'tool_vehicle_info':
         status = get_tool_status('vehicle_info')
@@ -876,6 +999,228 @@ async def callback_handler(event):
             [Button.inline('🔙 Back', b'setting_tools_handler')],
         ]
         await event.edit('🌐 IP INFO\n\nManage IP Info APIs', buttons=buttons)
+
+    # Vehicle Info API Management
+    elif data == b'tool_vehicle_add_api':
+        tool_api_action[sender.id] = 'vehicle_info'
+        placeholder = TOOL_CONFIG['vehicle_info']['placeholder']
+        buttons = [[Button.inline('❌ Cancel', b'tool_vehicle_info')]]
+        await event.edit(f'➕ ADD API for Vehicle Info\n\nSend API URL with placeholder {placeholder}', buttons=buttons)
+
+    elif data == b'tool_vehicle_remove_api':
+        apis = get_tool_apis('vehicle_info')
+        if not apis:
+            await event.edit('❌ No APIs found!', buttons=[[Button.inline('🔙 Back', b'tool_vehicle_info')]])
+        else:
+            buttons = []
+            for api in apis:
+                api_preview = api['url'][:40] + '...' if len(api['url']) > 40 else api['url']
+                buttons.append([Button.inline(f'❌ {api_preview}', f'remove_vehicle_api_{api["id"]}'.encode())])
+            buttons.append([Button.inline('🔙 Back', b'tool_vehicle_info')])
+            await event.edit('➖ REMOVE API', buttons=buttons)
+
+    elif data.startswith(b'remove_vehicle_api_'):
+        api_id = int(data.decode().split('_')[3])
+        remove_tool_api('vehicle_info', api_id)
+        await event.edit('✅ API removed!', buttons=[[Button.inline('🔙 Back', b'tool_vehicle_info')]])
+
+    elif data == b'tool_vehicle_all_api':
+        apis = get_tool_apis('vehicle_info')
+        text = f'📋 ALL APIs ({len(apis)})\n\n' if apis else '📋 ALL APIs\n\nNo APIs configured yet.'
+        for i, api in enumerate(apis, 1):
+            text += f'{i}. {api["url"]}\n   Added: {api["added_date"][:10]}\n\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_vehicle_info')]])
+
+    elif data == b'tool_vehicle_status':
+        apis = get_tool_apis('vehicle_info')
+        status = get_tool_status('vehicle_info')
+        text = f'📊 VEHICLE INFO STATUS\n\nTool Status: {"✅ Active" if status else "❌ Inactive"}\nAPIs Configured: {len(apis)}\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_vehicle_info')]])
+
+    # IFSC Info API Management
+    elif data == b'tool_ifsc_add_api':
+        tool_api_action[sender.id] = 'ifsc_info'
+        placeholder = TOOL_CONFIG['ifsc_info']['placeholder']
+        buttons = [[Button.inline('❌ Cancel', b'tool_ifsc_info')]]
+        await event.edit(f'➕ ADD API for IFSC Info\n\nSend API URL with placeholder {placeholder}', buttons=buttons)
+
+    elif data == b'tool_ifsc_remove_api':
+        apis = get_tool_apis('ifsc_info')
+        if not apis:
+            await event.edit('❌ No APIs found!', buttons=[[Button.inline('🔙 Back', b'tool_ifsc_info')]])
+        else:
+            buttons = []
+            for api in apis:
+                api_preview = api['url'][:40] + '...' if len(api['url']) > 40 else api['url']
+                buttons.append([Button.inline(f'❌ {api_preview}', f'remove_ifsc_api_{api["id"]}'.encode())])
+            buttons.append([Button.inline('🔙 Back', b'tool_ifsc_info')])
+            await event.edit('➖ REMOVE API', buttons=buttons)
+
+    elif data.startswith(b'remove_ifsc_api_'):
+        api_id = int(data.decode().split('_')[3])
+        remove_tool_api('ifsc_info', api_id)
+        await event.edit('✅ API removed!', buttons=[[Button.inline('🔙 Back', b'tool_ifsc_info')]])
+
+    elif data == b'tool_ifsc_all_api':
+        apis = get_tool_apis('ifsc_info')
+        text = f'📋 ALL APIs ({len(apis)})\n\n' if apis else '📋 ALL APIs\n\nNo APIs configured yet.'
+        for i, api in enumerate(apis, 1):
+            text += f'{i}. {api["url"]}\n   Added: {api["added_date"][:10]}\n\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_ifsc_info')]])
+
+    elif data == b'tool_ifsc_status':
+        apis = get_tool_apis('ifsc_info')
+        status = get_tool_status('ifsc_info')
+        text = f'📊 IFSC INFO STATUS\n\nTool Status: {"✅ Active" if status else "❌ Inactive"}\nAPIs Configured: {len(apis)}\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_ifsc_info')]])
+
+    # Pakistan Number API Management
+    elif data == b'tool_pak_add_api':
+        tool_api_action[sender.id] = 'pak_num'
+        placeholder = TOOL_CONFIG['pak_num']['placeholder']
+        buttons = [[Button.inline('❌ Cancel', b'tool_pak_num')]]
+        await event.edit(f'➕ ADD API for Pak Number\n\nSend API URL with placeholder {placeholder}', buttons=buttons)
+
+    elif data == b'tool_pak_remove_api':
+        apis = get_tool_apis('pak_num')
+        if not apis:
+            await event.edit('❌ No APIs found!', buttons=[[Button.inline('🔙 Back', b'tool_pak_num')]])
+        else:
+            buttons = []
+            for api in apis:
+                api_preview = api['url'][:40] + '...' if len(api['url']) > 40 else api['url']
+                buttons.append([Button.inline(f'❌ {api_preview}', f'remove_pak_api_{api["id"]}'.encode())])
+            buttons.append([Button.inline('🔙 Back', b'tool_pak_num')])
+            await event.edit('➖ REMOVE API', buttons=buttons)
+
+    elif data.startswith(b'remove_pak_api_'):
+        api_id = int(data.decode().split('_')[3])
+        remove_tool_api('pak_num', api_id)
+        await event.edit('✅ API removed!', buttons=[[Button.inline('🔙 Back', b'tool_pak_num')]])
+
+    elif data == b'tool_pak_all_api':
+        apis = get_tool_apis('pak_num')
+        text = f'📋 ALL APIs ({len(apis)})\n\n' if apis else '📋 ALL APIs\n\nNo APIs configured yet.'
+        for i, api in enumerate(apis, 1):
+            text += f'{i}. {api["url"]}\n   Added: {api["added_date"][:10]}\n\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_pak_num')]])
+
+    elif data == b'tool_pak_status':
+        apis = get_tool_apis('pak_num')
+        status = get_tool_status('pak_num')
+        text = f'📊 PAK NUMBER STATUS\n\nTool Status: {"✅ Active" if status else "❌ Inactive"}\nAPIs Configured: {len(apis)}\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_pak_num')]])
+
+    # Pincode API Management
+    elif data == b'tool_pin_add_api':
+        tool_api_action[sender.id] = 'pincode_info'
+        placeholder = TOOL_CONFIG['pincode_info']['placeholder']
+        buttons = [[Button.inline('❌ Cancel', b'tool_pincode_info')]]
+        await event.edit(f'➕ ADD API for Pincode\n\nSend API URL with placeholder {placeholder}', buttons=buttons)
+
+    elif data == b'tool_pin_remove_api':
+        apis = get_tool_apis('pincode_info')
+        if not apis:
+            await event.edit('❌ No APIs found!', buttons=[[Button.inline('🔙 Back', b'tool_pincode_info')]])
+        else:
+            buttons = []
+            for api in apis:
+                api_preview = api['url'][:40] + '...' if len(api['url']) > 40 else api['url']
+                buttons.append([Button.inline(f'❌ {api_preview}', f'remove_pin_api_{api["id"]}'.encode())])
+            buttons.append([Button.inline('🔙 Back', b'tool_pincode_info')])
+            await event.edit('➖ REMOVE API', buttons=buttons)
+
+    elif data.startswith(b'remove_pin_api_'):
+        api_id = int(data.decode().split('_')[3])
+        remove_tool_api('pincode_info', api_id)
+        await event.edit('✅ API removed!', buttons=[[Button.inline('🔙 Back', b'tool_pincode_info')]])
+
+    elif data == b'tool_pin_all_api':
+        apis = get_tool_apis('pincode_info')
+        text = f'📋 ALL APIs ({len(apis)})\n\n' if apis else '📋 ALL APIs\n\nNo APIs configured yet.'
+        for i, api in enumerate(apis, 1):
+            text += f'{i}. {api["url"]}\n   Added: {api["added_date"][:10]}\n\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_pincode_info')]])
+
+    elif data == b'tool_pin_status':
+        apis = get_tool_apis('pincode_info')
+        status = get_tool_status('pincode_info')
+        text = f'📊 PINCODE STATUS\n\nTool Status: {"✅ Active" if status else "❌ Inactive"}\nAPIs Configured: {len(apis)}\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_pincode_info')]])
+
+    # IMEI API Management
+    elif data == b'tool_imei_add_api':
+        tool_api_action[sender.id] = 'imei_info'
+        placeholder = TOOL_CONFIG['imei_info']['placeholder']
+        buttons = [[Button.inline('❌ Cancel', b'tool_imei_info')]]
+        await event.edit(f'➕ ADD API for IMEI\n\nSend API URL with placeholder {placeholder}', buttons=buttons)
+
+    elif data == b'tool_imei_remove_api':
+        apis = get_tool_apis('imei_info')
+        if not apis:
+            await event.edit('❌ No APIs found!', buttons=[[Button.inline('🔙 Back', b'tool_imei_info')]])
+        else:
+            buttons = []
+            for api in apis:
+                api_preview = api['url'][:40] + '...' if len(api['url']) > 40 else api['url']
+                buttons.append([Button.inline(f'❌ {api_preview}', f'remove_imei_api_{api["id"]}'.encode())])
+            buttons.append([Button.inline('🔙 Back', b'tool_imei_info')])
+            await event.edit('➖ REMOVE API', buttons=buttons)
+
+    elif data.startswith(b'remove_imei_api_'):
+        api_id = int(data.decode().split('_')[3])
+        remove_tool_api('imei_info', api_id)
+        await event.edit('✅ API removed!', buttons=[[Button.inline('🔙 Back', b'tool_imei_info')]])
+
+    elif data == b'tool_imei_all_api':
+        apis = get_tool_apis('imei_info')
+        text = f'📋 ALL APIs ({len(apis)})\n\n' if apis else '📋 ALL APIs\n\nNo APIs configured yet.'
+        for i, api in enumerate(apis, 1):
+            text += f'{i}. {api["url"]}\n   Added: {api["added_date"][:10]}\n\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_imei_info')]])
+
+    elif data == b'tool_imei_status':
+        apis = get_tool_apis('imei_info')
+        status = get_tool_status('imei_info')
+        text = f'📊 IMEI STATUS\n\nTool Status: {"✅ Active" if status else "❌ Inactive"}\nAPIs Configured: {len(apis)}\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_imei_info')]])
+
+    # IP Info API Management
+    elif data == b'tool_ip_add_api':
+        tool_api_action[sender.id] = 'ip_info'
+        placeholder = TOOL_CONFIG['ip_info']['placeholder']
+        buttons = [[Button.inline('❌ Cancel', b'tool_ip_info')]]
+        await event.edit(f'➕ ADD API for IP Info\n\nSend API URL with placeholder {placeholder}', buttons=buttons)
+
+    elif data == b'tool_ip_remove_api':
+        apis = get_tool_apis('ip_info')
+        if not apis:
+            await event.edit('❌ No APIs found!', buttons=[[Button.inline('🔙 Back', b'tool_ip_info')]])
+        else:
+            buttons = []
+            for api in apis:
+                api_preview = api['url'][:40] + '...' if len(api['url']) > 40 else api['url']
+                buttons.append([Button.inline(f'❌ {api_preview}', f'remove_ip_api_{api["id"]}'.encode())])
+            buttons.append([Button.inline('🔙 Back', b'tool_ip_info')])
+            await event.edit('➖ REMOVE API', buttons=buttons)
+
+    elif data.startswith(b'remove_ip_api_'):
+        api_id = int(data.decode().split('_')[3])
+        remove_tool_api('ip_info', api_id)
+        await event.edit('✅ API removed!', buttons=[[Button.inline('🔙 Back', b'tool_ip_info')]])
+
+    elif data == b'tool_ip_all_api':
+        apis = get_tool_apis('ip_info')
+        text = f'📋 ALL APIs ({len(apis)})\n\n' if apis else '📋 ALL APIs\n\nNo APIs configured yet.'
+        for i, api in enumerate(apis, 1):
+            text += f'{i}. {api["url"]}\n   Added: {api["added_date"][:10]}\n\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_ip_info')]])
+
+    elif data == b'tool_ip_status':
+        apis = get_tool_apis('ip_info')
+        status = get_tool_status('ip_info')
+        text = f'📊 IP INFO STATUS\n\nTool Status: {"✅ Active" if status else "❌ Inactive"}\nAPIs Configured: {len(apis)}\n'
+        await event.edit(text, buttons=[[Button.inline('🔙 Back', b'tool_ip_info')]])
 
     elif data == b'setting_groups':
         groups = get_all_groups()
@@ -1073,6 +1418,46 @@ async def message_handler(event):
     sender = await event.get_sender()
     if not sender:
         return
+
+    # Handle API URL input
+    if sender.id in tool_api_action:
+        tool_name = tool_api_action[sender.id]
+        api_url = event.text.strip()
+        
+        # Validate that URL contains the placeholder
+        placeholder = TOOL_CONFIG[tool_name]['placeholder']
+        if placeholder not in api_url:
+            await event.respond(f'❌ Invalid API URL!\n\nURL must contain placeholder: {placeholder}', buttons=[[Button.inline('🔙 Back', f'tool_{tool_name.split("_")[0]}_info'.encode())]])
+            raise events.StopPropagation
+        
+        # Add API to database
+        add_tool_api(tool_name, api_url)
+        del tool_api_action[sender.id]
+        
+        # Determine back button based on tool name
+        if tool_name == 'number_info':
+            back_btn = b'tool_number_info'
+        elif tool_name == 'aadhar_info':
+            back_btn = b'tool_aadhar_info'
+        elif tool_name == 'aadhar_family':
+            back_btn = b'tool_aadhar_family'
+        elif tool_name == 'vehicle_info':
+            back_btn = b'tool_vehicle_info'
+        elif tool_name == 'ifsc_info':
+            back_btn = b'tool_ifsc_info'
+        elif tool_name == 'pak_num':
+            back_btn = b'tool_pak_num'
+        elif tool_name == 'pincode_info':
+            back_btn = b'tool_pincode_info'
+        elif tool_name == 'imei_info':
+            back_btn = b'tool_imei_info'
+        elif tool_name == 'ip_info':
+            back_btn = b'tool_ip_info'
+        else:
+            back_btn = b'setting_tools_handler'
+        
+        await event.respond(f'✅ API added successfully!\n\nURL: {api_url}', buttons=[[Button.inline('🔙 Back', back_btn)]])
+        raise events.StopPropagation
 
     if sender.id in tool_session:
         tool_key = tool_session[sender.id]
