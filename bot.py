@@ -508,7 +508,7 @@ async def callback_handler(event):
         buttons = [
             [Button.inline('➕ Add API', b'tool_number_add_api'), Button.inline('➖ Remove API', b'tool_number_remove_api')],
             [Button.inline('📋 All API', b'tool_number_all_api'), Button.inline('📊 Status', b'tool_number_status')],
-            [Button.inline(f'🔄 {status_text}', b'tool_number_toggle')],
+            [Button.inline(f'{status_text}', b'tool_number_toggle')],
             [Button.inline('🔙 Back', b'setting_tools_handler')],
         ]
         await event.edit('📱 NUMBER INFO\n\nManage Number Info APIs', buttons=buttons)
@@ -521,7 +521,7 @@ async def callback_handler(event):
         buttons = [
             [Button.inline('➕ Add API', b'tool_number_add_api'), Button.inline('➖ Remove API', b'tool_number_remove_api')],
             [Button.inline('📋 All API', b'tool_number_all_api'), Button.inline('📊 Status', b'tool_number_status')],
-            [Button.inline(f'🔄 {status_text}', b'tool_number_toggle')],
+            [Button.inline(f'{status_text}', b'tool_number_toggle')],
             [Button.inline('🔙 Back', b'setting_tools_handler')],
         ]
         await event.edit('📱 NUMBER INFO\n\nManage Number Info APIs', buttons=buttons)
