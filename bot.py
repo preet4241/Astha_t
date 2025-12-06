@@ -15,7 +15,7 @@ from database import (
     get_all_channels, channel_exists, add_group, remove_group,
     get_all_groups, group_exists, is_group_active,
     set_tool_status, get_tool_status, get_all_active_tools,
-    get_tool_apis, add_tool_api, remove_tool_api, get_random_tool_api,
+    get_tool_apis, add_tool_api, remove_tool_api,
     set_backup_channel, get_backup_channel, set_backup_interval, 
     get_backup_interval, set_last_backup_time, get_last_backup_time,
     get_db_file
