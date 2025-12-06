@@ -782,50 +782,52 @@ async def callback_handler(event):
     elif data == b'owner_tools':
         buttons = []
         tools_map = [
-            ('📱 Number Info', b'tool_number_info'),
-            ('🆔 Aadhar Info', b'tool_aadhar_info'),
-            ('👨‍👩‍👧‍👦 Aadhar to Family', b'tool_aadhar_family'),
-            ('🚗 Vehicle Info', b'tool_vehicle_info'),
-            ('🏦 IFSC Info', b'tool_ifsc_info'),
-            ('🇵🇰 Pak Num Info', b'tool_pak_num'),
-            ('📍 Pin Code Info', b'tool_pincode_info'),
-            ('📱 IMEI Info', b'tool_imei_info'),
-            ('🌐 IP Info', b'tool_ip_info'),
+            ('number_info', '📱 Number Info', b'tool_number_info'),
+            ('aadhar_info', '🆔 Aadhar Info', b'tool_aadhar_info'),
+            ('aadhar_family', '👨‍👩‍👧‍👦 Aadhar to Family', b'tool_aadhar_family'),
+            ('vehicle_info', '🚗 Vehicle Info', b'tool_vehicle_info'),
+            ('ifsc_info', '🏦 IFSC Info', b'tool_ifsc_info'),
+            ('pak_num', '🇵🇰 Pak Num Info', b'tool_pak_num'),
+            ('pincode_info', '📍 Pin Code Info', b'tool_pincode_info'),
+            ('imei_info', '📱 IMEI Info', b'tool_imei_info'),
+            ('ip_info', '🌐 IP Info', b'tool_ip_info'),
         ]
         
         row = []
-        for idx, (tool_name, callback) in enumerate(tools_map):
-            row.append(Button.inline(tool_name, callback))
-            if len(row) == 2 or idx == len(tools_map) - 1:
-                buttons.append(row)
-                row = []
+        for idx, (tool_key, tool_name, callback) in enumerate(tools_map):
+            if get_tool_status(tool_key):
+                row.append(Button.inline(tool_name, callback))
+                if len(row) == 2 or idx == len(tools_map) - 1:
+                    buttons.append(row)
+                    row = []
         
         buttons.append([Button.inline('🔙 Back', b'owner_back')])
-        await event.edit('🛠️ TOOLS\n\nSelect a tool to use:', buttons=buttons)
+        await event.edit('🛠️ TOOLS\n\nSelect an active tool to use:', buttons=buttons)
     
     elif data == b'user_tools':
         buttons = []
         tools_map = [
-            ('📱 Number Info', b'tool_number_info'),
-            ('🆔 Aadhar Info', b'tool_aadhar_info'),
-            ('👨‍👩‍👧‍👦 Aadhar to Family', b'tool_aadhar_family'),
-            ('🚗 Vehicle Info', b'tool_vehicle_info'),
-            ('🏦 IFSC Info', b'tool_ifsc_info'),
-            ('🇵🇰 Pak Num Info', b'tool_pak_num'),
-            ('📍 Pin Code Info', b'tool_pincode_info'),
-            ('📱 IMEI Info', b'tool_imei_info'),
-            ('🌐 IP Info', b'tool_ip_info'),
+            ('number_info', '📱 Number Info', b'tool_number_info'),
+            ('aadhar_info', '🆔 Aadhar Info', b'tool_aadhar_info'),
+            ('aadhar_family', '👨‍👩‍👧‍👦 Aadhar to Family', b'tool_aadhar_family'),
+            ('vehicle_info', '🚗 Vehicle Info', b'tool_vehicle_info'),
+            ('ifsc_info', '🏦 IFSC Info', b'tool_ifsc_info'),
+            ('pak_num', '🇵🇰 Pak Num Info', b'tool_pak_num'),
+            ('pincode_info', '📍 Pin Code Info', b'tool_pincode_info'),
+            ('imei_info', '📱 IMEI Info', b'tool_imei_info'),
+            ('ip_info', '🌐 IP Info', b'tool_ip_info'),
         ]
         
         row = []
-        for idx, (tool_name, callback) in enumerate(tools_map):
-            row.append(Button.inline(tool_name, callback))
-            if len(row) == 2 or idx == len(tools_map) - 1:
-                buttons.append(row)
-                row = []
+        for idx, (tool_key, tool_name, callback) in enumerate(tools_map):
+            if get_tool_status(tool_key):
+                row.append(Button.inline(tool_name, callback))
+                if len(row) == 2 or idx == len(tools_map) - 1:
+                    buttons.append(row)
+                    row = []
         
         buttons.append([Button.inline('🔙 Back', b'user_back')])
-        await event.edit('🛠️ TOOLS\n\nSelect a tool to use:', buttons=buttons)
+        await event.edit('🛠️ TOOLS\n\nSelect an active tool to use:', buttons=buttons)
     
     elif data == b'user_profile':
         user = get_user(sender.id)
