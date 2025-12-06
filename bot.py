@@ -3,6 +3,9 @@ from telethon import TelegramClient, events, Button
 import os
 import random
 import asyncio
+import re
+import json
+import aiohttp
 from datetime import datetime, timedelta
 from database import (
     add_user, get_user, ban_user, unban_user, 
@@ -10,7 +13,8 @@ from database import (
     set_setting, get_setting, add_channel, remove_channel,
     get_all_channels, channel_exists, add_group, remove_group,
     get_all_groups, group_exists, is_group_active,
-    set_tool_status, get_tool_status, get_all_active_tools
+    set_tool_status, get_tool_status, get_all_active_tools,
+    get_tool_apis, add_tool_api, remove_tool_api, get_random_tool_api
 )
 
 api_id = int(os.getenv('API_ID', '22880380'))
@@ -29,6 +33,165 @@ group_action_temp = {}
 group_page_temp = {}
 user_action_temp = {}
 user_action_type = {}
+tool_session = {}
+tool_api_action = {}
+
+TOOL_CONFIG = {
+    'number_info': {
+        'name': '📱 Number Info',
+        'prompt': '📱 Enter Mobile Number:\n\nFormat: 10 digit number\nExample: 7999520665',
+        'placeholder': '{number}',
+    },
+    'aadhar_info': {
+        'name': '🆔 Aadhar Info',
+        'prompt': '🆔 Enter Aadhar Number:\n\nFormat: 12 digit number\nExample: 123456789012',
+        'placeholder': '{aadhar}',
+    },
+    'aadhar_family': {
+        'name': '👨‍👩‍👧‍👦 Aadhar to Family',
+        'prompt': '👨‍👩‍👧‍👦 Enter Aadhar Number:\n\nFormat: 12 digit number\nExample: 123456789012',
+        'placeholder': '{aadhar}',
+    },
+    'vehicle_info': {
+        'name': '🚗 Vehicle Info',
+        'prompt': '🚗 Enter Vehicle Number:\n\nFormat: Indian Vehicle Number\nExample: MH12AB1234',
+        'placeholder': '{vehicle}',
+    },
+    'ifsc_info': {
+        'name': '🏦 IFSC Info',
+        'prompt': '🏦 Enter IFSC Code:\n\nFormat: 11 character code\nExample: SBIN0001234',
+        'placeholder': '{ifsc}',
+    },
+    'pak_num': {
+        'name': '🇵🇰 Pak Num Info',
+        'prompt': '🇵🇰 Enter Pakistan Number:\n\nFormat: 10-11 digit number\nExample: 03001234567',
+        'placeholder': '{number}',
+    },
+    'pincode_info': {
+        'name': '📍 Pin Code Info',
+        'prompt': '📍 Enter Pin Code:\n\nFormat: 6 digit code\nExample: 400001',
+        'placeholder': '{pincode}',
+    },
+    'imei_info': {
+        'name': '📱 IMEI Info',
+        'prompt': '📱 Enter IMEI Number:\n\nFormat: 15 digit number\nExample: 123456789012345',
+        'placeholder': '{imei}',
+    },
+    'ip_info': {
+        'name': '🌐 IP Info',
+        'prompt': '🌐 Enter IP Address:\n\nFormat: IPv4 or IPv6\nExample: 8.8.8.8',
+        'placeholder': '{ip}',
+    },
+}
+
+def validate_phone_number(text):
+    """Validate and normalize Indian phone number"""
+    cleaned = re.sub(r'[^\d]', '', text)
+    if cleaned.startswith('91') and len(cleaned) == 12:
+        cleaned = cleaned[2:]
+    if cleaned.startswith('0') and len(cleaned) == 11:
+        cleaned = cleaned[1:]
+    if len(cleaned) == 10 and cleaned[0] in '6789':
+        return cleaned
+    return None
+
+def validate_aadhar(text):
+    """Validate Aadhar number (12 digits)"""
+    cleaned = re.sub(r'[^\d]', '', text)
+    if len(cleaned) == 12:
+        return cleaned
+    return None
+
+def validate_vehicle(text):
+    """Validate Indian vehicle number"""
+    cleaned = re.sub(r'[^A-Za-z0-9]', '', text).upper()
+    if re.match(r'^[A-Z]{2}\d{1,2}[A-Z]{0,3}\d{1,4}$', cleaned):
+        return cleaned
+    return None
+
+def validate_ifsc(text):
+    """Validate IFSC code (11 characters)"""
+    cleaned = text.strip().upper()
+    if re.match(r'^[A-Z]{4}0[A-Z0-9]{6}$', cleaned):
+        return cleaned
+    return None
+
+def validate_pak_number(text):
+    """Validate Pakistan phone number"""
+    cleaned = re.sub(r'[^\d]', '', text)
+    if cleaned.startswith('92') and len(cleaned) == 12:
+        cleaned = cleaned[2:]
+    if len(cleaned) == 10 or len(cleaned) == 11:
+        return cleaned
+    return None
+
+def validate_pincode(text):
+    """Validate Indian PIN code (6 digits)"""
+    cleaned = re.sub(r'[^\d]', '', text)
+    if len(cleaned) == 6:
+        return cleaned
+    return None
+
+def validate_imei(text):
+    """Validate IMEI number (15 digits)"""
+    cleaned = re.sub(r'[^\d]', '', text)
+    if len(cleaned) == 15:
+        return cleaned
+    return None
+
+def validate_ip(text):
+    """Validate IP address"""
+    cleaned = text.strip()
+    ipv4_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
+    if re.match(ipv4_pattern, cleaned):
+        parts = cleaned.split('.')
+        if all(0 <= int(p) <= 255 for p in parts):
+            return cleaned
+    if ':' in cleaned:
+        return cleaned
+    return None
+
+VALIDATORS = {
+    'number_info': validate_phone_number,
+    'aadhar_info': validate_aadhar,
+    'aadhar_family': validate_aadhar,
+    'vehicle_info': validate_vehicle,
+    'ifsc_info': validate_ifsc,
+    'pak_num': validate_pak_number,
+    'pincode_info': validate_pincode,
+    'imei_info': validate_imei,
+    'ip_info': validate_ip,
+}
+
+async def call_tool_api(tool_name, validated_input):
+    """Call the API for a tool and return JSON response"""
+    api_url = get_random_tool_api(tool_name)
+    if not api_url:
+        return None, "No API configured for this tool. Please add an API first."
+    
+    url = api_url.replace(TOOL_CONFIG[tool_name]['placeholder'], validated_input)
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data, None
+                else:
+                    return None, f"API Error: Status {response.status}"
+    except asyncio.TimeoutError:
+        return None, "API Timeout: Request took too long"
+    except Exception as e:
+        return None, f"API Error: {str(e)}"
+
+async def send_back_button_delayed(client, chat_id, msg_id, back_callback, delay=2):
+    """Send back button after delay"""
+    await asyncio.sleep(delay)
+    try:
+        buttons = [[Button.inline('👈 Back', back_callback)]]
+        await client.edit_message(chat_id, msg_id, buttons=buttons)
+    except:
+        pass
 
 def get_greeting():
     hour = datetime.now().hour

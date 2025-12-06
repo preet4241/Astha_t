@@ -240,6 +240,60 @@ def get_all_active_tools():
     conn.close()
     return [tool[0] for tool in tools]
 
+def init_tool_apis_table():
+    """Initialize tool APIs table"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tool_apis (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tool_name TEXT NOT NULL,
+            api_url TEXT NOT NULL,
+            added_date TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def add_tool_api(tool_name, api_url):
+    """Add API URL for a tool"""
+    init_tool_apis_table()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO tool_apis (tool_name, api_url, added_date) VALUES (?, ?, ?)', 
+                   (tool_name, api_url, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+    return True
+
+def remove_tool_api(tool_name, api_id):
+    """Remove API from a tool"""
+    init_tool_apis_table()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM tool_apis WHERE id = ? AND tool_name = ?', (api_id, tool_name))
+    conn.commit()
+    conn.close()
+    return True
+
+def get_tool_apis(tool_name):
+    """Get all APIs for a tool"""
+    init_tool_apis_table()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, api_url, added_date FROM tool_apis WHERE tool_name = ?', (tool_name,))
+    apis = cursor.fetchall()
+    conn.close()
+    return [{'id': api[0], 'url': api[1], 'added_date': api[2]} for api in apis]
+
+def get_random_tool_api(tool_name):
+    """Get a random API for a tool"""
+    import random
+    apis = get_tool_apis(tool_name)
+    if apis:
+        return random.choice(apis)['url']
+    return None
+
 def set_setting(key, value):
     """Set a setting value"""
     init_settings_table()
