@@ -462,12 +462,15 @@ async def callback_handler(event):
     elif data == b'owner_settings':
         buttons = [
             [Button.inline('🛠️ Tools Handler', b'setting_tools_handler')],
-            [Button.inline('📝 Start Text', b'setting_start_text')],
             [Button.inline('📺 Sub-Force', b'setting_sub_force'), Button.inline('👥 Groups', b'setting_groups')],
+            [Button.inline('📝 Start Text', b'setting_start_text'), Button.inline('💾 Backup', b'setting_backup')],
             [Button.inline('🔙 Back', b'owner_back')],
         ]
         settings_text = "BOT SETTINGS\n\nConfigure your bot:"
         await event.edit(settings_text, buttons=buttons)
+    
+    elif data == b'setting_backup':
+        await event.edit('💾 BACKUP\n\nBot backup feature coming soon...', buttons=[[Button.inline('🔙 Back', b'owner_settings')]])
     
     elif data == b'setting_tools_handler':
         buttons = [
