@@ -16,7 +16,7 @@ from database import (
     get_all_groups, group_exists, is_group_active,
     set_tool_status, get_tool_status, get_all_active_tools,
     get_tool_apis, add_tool_api, remove_tool_api,
-    set_backup_channel, get_backup_channel, set_backup_interval, 
+    set_backup_channel, get_backup_channel, set_backup_interval,
     get_backup_interval, set_last_backup_time, get_last_backup_time,
     get_db_file
 )
@@ -172,21 +172,21 @@ async def call_tool_api(tool_name, validated_input):
     """Call the API for a tool and return JSON response. Try multiple APIs on error."""
     # Get all APIs for this tool
     all_apis = get_tool_apis(tool_name)
-    
+
     if not all_apis:
         return None, "No API configured for this tool. Please add an API first."
-    
+
     # Shuffle APIs to distribute load randomly
     import random
     random.shuffle(all_apis)
-    
+
     last_error = None
-    
+
     # Try each API until one succeeds
     for api_info in all_apis:
         api_url = api_info['url']
         url = api_url.replace(TOOL_CONFIG[tool_name]['placeholder'], validated_input)
-        
+
         try:
             print(f"[LOG] 🔄 Trying API: {api_url[:50]}...")
             async with aiohttp.ClientSession() as session:
@@ -212,7 +212,7 @@ async def call_tool_api(tool_name, validated_input):
             last_error = f"API Error: {str(e)}"
             print(f"[LOG] ❌ API error: {last_error}, trying next API...")
             continue
-    
+
     # If all APIs failed, return the last error
     print(f"[LOG] ❌ All APIs failed for {tool_name}")
     return None, f"All APIs failed. Last error: {last_error}"
@@ -305,7 +305,7 @@ async def check_user_access(sender_id):
     user_data = get_user(sender_id)
     if user_data and user_data.get('banned'):
         return {'allowed': False, 'reason': 'banned'}
-    
+
     # Check sub-force channels
     channels = get_all_channels()
     if channels:
@@ -322,10 +322,10 @@ async def check_user_access(sender_id):
             except Exception as e:
                 print(f"[LOG] Error checking channel {ch['username']}: {e}")
                 not_joined.append(ch)
-        
+
         if not_joined:
             return {'allowed': False, 'reason': 'not_subscribed', 'channels': not_joined}
-    
+
     return {'allowed': True}
 
 @client.on(events.NewMessage(pattern='/start'))
@@ -724,17 +724,17 @@ async def callback_handler(event):
             ]
             backup_text = f"💾 BACKUP SETTINGS\n\n📺 Channel: {backup_channel['title']}\n@{backup_channel['username']}\n\n⏰ Interval: {interval} minutes"
             await event.edit(backup_text, buttons=buttons)
-    
+
     elif data == b'backup_change_channel':
         buttons = [[Button.inline('🔙 Back', b'setting_backup')]]
         await event.edit('🔄 CHANGE BACKUP CHANNEL\n\nSend me one of:\n- Channel ID (number)\n- @username\n- Forward a message from the channel', buttons=buttons)
         backup_channel_temp[sender.id] = 'add'
-    
+
     elif data == b'backup_interval':
         buttons = [[Button.inline('🔙 Back', b'setting_backup')]]
         await event.edit('⏰ SET BACKUP INTERVAL\n\nSend interval in minutes (e.g., 1440, 720, 60):', buttons=buttons)
         backup_channel_temp[sender.id] = 'interval'
-    
+
     elif data == b'backup_now':
         backup_channel_temp[sender.id] = 'restore'
         buttons = [[Button.inline('🔙 Back', b'setting_backup')]]
@@ -858,7 +858,7 @@ async def callback_handler(event):
         tool_api_action[sender.id] = 'aadhar_info'
         placeholder = TOOL_CONFIG['aadhar_info']['placeholder']
         buttons = [[Button.inline('❌ Cancel', b'tool_aadhar_info')]]
-        await event.edit(f'➕ ADD API for Aadhar Info\n\nSend API URL with placeholder {placeholder}\n\nExample:\nhttps://api.example.com/aadhar?id={placeholder}', buttons=buttons)
+        await event.edit(f'➕ ADD API for Aadhar Info\n\nSend API URL with placeholder {placeholder}\n\nExample:\nhttps://api.example.com/ aadhar?id={placeholder}', buttons=buttons)
 
     elif data == b'tool_aadhar_remove_api':
         apis = get_tool_apis('aadhar_info')
@@ -1406,29 +1406,29 @@ async def callback_handler(event):
     elif data == b'owner_broadcast':
         broadcast_temp[sender.id] = True
         buttons = [[Button.inline('❌ Cancel', b'owner_back')]]
-        help_text = "📝 Type your broadcast message:\n\nAvailable Placeholders:\n{greeting} - Good Morning/Afternoon/Evening/Night\n{first_name} - User's first name\n{username} - User's username\n{user_id} - User's ID\n{total_users} - Total users count\n{active_users} - Active users count\n{date} - Today's date (DD-MM-YYYY)\n{time} - Current time (HH:MM:SS)\n{datetime} - Full date and time\n{bot_name} - Bot name"
+        help_text = "Type your broadcast message:\n\nAvailable Placeholders:\n{greeting} - Good Morning/Afternoon/Evening/Night\n{first_name} - User's first name\n{username} - User's username\n{user_id} - User's ID\n{total_users} - Total users count\n{active_users} - Active users count\n{date} - Today's date (DD-MM-YYYY)\n{time} - Current time (HH:MM:SS)\n{datetime} - Full date and time\n{bot_name} - Bot name"
         await event.edit(help_text, buttons=buttons)
 
     elif data == b'owner_status':
         stats = get_stats()
-        
+
         # Get current date and time
         current_date = datetime.now().strftime("%d-%m-%Y")
         current_time = datetime.now().strftime("%H:%M:%S")
-        
+
         # Get active tools count
         active_tools = get_all_active_tools()
         tools_count = len(active_tools)
-        
+
         # Get channels and groups count
         channels = get_all_channels()
         groups = get_all_groups()
-        
+
         # Get backup info
         backup_channel = get_backup_channel()
         backup_interval = get_backup_interval()
         last_backup = get_last_backup_time()
-        
+
         if last_backup:
             try:
                 last_backup_dt = datetime.fromisoformat(last_backup)
@@ -1437,26 +1437,26 @@ async def callback_handler(event):
                 last_backup_str = "Never"
         else:
             last_backup_str = "Never"
-        
+
         # Build status text
         status_text = f"📊 **BOT STATUS DASHBOARD**\n"
         status_text += f"{'='*35}\n\n"
-        
+
         status_text += f"👥 **Users Statistics:**\n"
         status_text += f"├ Total Users: {stats['total_users']}\n"
         status_text += f"├ Active Users: {stats['active_users']}\n"
         status_text += f"└ Banned Users: {stats['banned_users']}\n\n"
-        
+
         status_text += f"💬 **Messages:**\n"
         status_text += f"└ Total Messages: {stats['total_messages']}\n\n"
-        
+
         status_text += f"🛠️ **Tools:**\n"
         status_text += f"└ Active Tools: {tools_count}/9\n\n"
-        
+
         status_text += f"📺 **Channels & Groups:**\n"
         status_text += f"├ Sub-Force Channels: {len(channels)}\n"
         status_text += f"└ Connected Groups: {len(groups)}\n\n"
-        
+
         status_text += f"💾 **Backup Info:**\n"
         if backup_channel:
             status_text += f"├ Channel: @{backup_channel['username']}\n"
@@ -1464,14 +1464,14 @@ async def callback_handler(event):
             status_text += f"└ Last Backup: {last_backup_str}\n\n"
         else:
             status_text += f"└ No backup configured\n\n"
-        
+
         status_text += f"⏰ **System Time:**\n"
         status_text += f"├ Date: {current_date}\n"
         status_text += f"└ Time: {current_time}\n\n"
-        
+
         status_text += f"{'='*35}\n"
         status_text += f"✅ **Status:** Online & Running"
-        
+
         buttons = [[Button.inline('🔄 Refresh', b'owner_status'), Button.inline('🔙 Back', b'owner_back')]]
         await event.edit(status_text, buttons=buttons)
 
@@ -1521,7 +1521,7 @@ async def callback_handler(event):
                 buttons.append([Button.inline('✅ Check Again', b'check_subscription')])
                 await event.edit(msg, buttons=buttons)
             return
-        
+
         tools_map = [
             ('number_info', '📱 Number Info', b'use_number_info'),
             ('aadhar_info', '🆔 Aadhar Info', b'use_aadhar_info'),
@@ -1623,7 +1623,7 @@ async def callback_handler(event):
                 await event.answer(f"Error sending file: {str(e)}", alert=True)
                 print(f"[LOG] ❌ Error sending broadcast report: {e}")
 
-@client.on(events.NewMessage)
+@client.on(events.NewMessage(incoming=True))
 async def message_handler(event):
     sender = await event.get_sender()
     if not sender:
@@ -1633,47 +1633,47 @@ async def message_handler(event):
     if sender.id == owner_id and event.file and event.file.name and event.file.name.endswith('.db'):
         try:
             db_file = get_db_file()
-            
+
             # Download the new database file
             temp_file = "temp_restore.db"
             await event.download_media(file=temp_file)
-            
+
             # Delete old database
             if os.path.exists(db_file):
                 os.remove(db_file)
                 print(f"[LOG] 🗑️ Old database deleted")
-            
+
             # Replace with new database
             os.rename(temp_file, db_file)
             print(f"[LOG] ✅ Database restored from file")
-            
+
             await event.respond('✅ Database restored successfully!\n\n🔄 Bot restarting...')
-            
+
             # Restart bot to reload database
             import sys
             os.execv(sys.executable, ['python'] + sys.argv)
-            
+
         except Exception as e:
             await event.respond(f'❌ Database restore failed: {str(e)}')
             print(f"[LOG] ❌ Database restore error: {e}")
-        
+
         raise events.StopPropagation
 
     # Handle API URL input
     if sender.id in tool_api_action:
         tool_name = tool_api_action[sender.id]
         api_url = event.text.strip()
-        
+
         # Validate that URL contains the placeholder
         placeholder = TOOL_CONFIG[tool_name]['placeholder']
         if placeholder not in api_url:
             await event.respond(f'❌ Invalid API URL!\n\nURL must contain placeholder: {placeholder}', buttons=[[Button.inline('🔙 Back', f'tool_{tool_name.split("_")[0]}_info'.encode())]])
             raise events.StopPropagation
-        
+
         # Add API to database
         add_tool_api(tool_name, api_url)
         del tool_api_action[sender.id]
-        
+
         # Determine back button based on tool name
         if tool_name == 'number_info':
             back_btn = b'tool_number_info'
@@ -1695,7 +1695,7 @@ async def message_handler(event):
             back_btn = b'tool_ip_info'
         else:
             back_btn = b'setting_tools_handler'
-        
+
         await event.respond(f'✅ API added successfully!\n\nURL: {api_url}', buttons=[[Button.inline('🔙 Back', back_btn)]])
         raise events.StopPropagation
 
@@ -1744,33 +1744,33 @@ async def message_handler(event):
         except ValueError:
             await event.respond('❌ Invalid number! Send interval in minutes.', buttons=[[Button.inline('🔙 Back', b'setting_backup')]])
         raise events.StopPropagation
-    
+
     if backup_channel_temp.get(sender.id) == 'restore':
         if event.file and event.file.name and event.file.name.endswith('.db'):
             try:
                 db_file = get_db_file()
-                
+
                 # Download the new database file
                 temp_file = "temp_restore.db"
                 await event.download_media(file=temp_file)
-                
+
                 # Delete old database
                 if os.path.exists(db_file):
                     os.remove(db_file)
                     print(f"[LOG] 🗑️ Old database deleted")
-                
+
                 # Replace with new database
                 os.rename(temp_file, db_file)
                 print(f"[LOG] ✅ Database restored from backup")
-                
+
                 backup_channel_temp[sender.id] = None
-                
+
                 await event.respond('✅ Database restored successfully!\n\n🔄 Bot restarting...')
-                
+
                 # Restart bot to reload database
                 import sys
                 os.execv(sys.executable, ['python'] + sys.argv)
-                
+
             except Exception as e:
                 await event.respond(f'❌ Database restore failed: {str(e)}')
                 print(f"[LOG] ❌ Database restore error: {e}")
@@ -1778,7 +1778,7 @@ async def message_handler(event):
         else:
             await event.respond('❌ Please send a valid .db database file!', buttons=[[Button.inline('🔙 Back', b'setting_backup')]])
         raise events.StopPropagation
-    
+
     if sender.id == owner_id and backup_channel_temp.get(sender.id) == 'add':
         ch_id = None
         ch_name = None
@@ -2479,7 +2479,7 @@ async def num_handler(event):
     sender = await event.get_sender()
     if not sender:
         return
-    
+
     # Check access
     if sender.id != owner_id:
         access_check = await check_user_access(sender.id)
@@ -2497,27 +2497,27 @@ async def num_handler(event):
                     buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
                 await event.respond(msg, buttons=buttons)
             raise events.StopPropagation
-    
+
     # Check if tool is active
     if not get_tool_status('number_info'):
         await event.respond('❌ This tool is currently disabled!')
         raise events.StopPropagation
-    
+
     match = event.pattern_match
     if not match.group(1):
         await event.respond('📱 Usage: /num <mobile_number>\n\nExample: /num 7999520665')
         raise events.StopPropagation
-    
+
     number = match.group(1).strip()
     validated = validate_phone_number(number)
-    
+
     if not validated:
         await event.respond('❌ Invalid phone number!\n\nFormat: 10 digit number\nExample: 7999520665')
         raise events.StopPropagation
-    
+
     processing_msg = await event.respond('⏳ Processing...')
     data, error = await call_tool_api('number_info', validated)
-    
+
     if data:
         response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
         if len(response) > 4000:
@@ -2525,7 +2525,7 @@ async def num_handler(event):
         await processing_msg.edit(response)
     else:
         await processing_msg.edit(f"❌ Error: {error}")
-    
+
     raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern=r'/adhar(?:\s+(.+))?'))
@@ -2533,7 +2533,7 @@ async def adhar_handler(event):
     sender = await event.get_sender()
     if not sender:
         return
-    
+
     if sender.id != owner_id:
         access_check = await check_user_access(sender.id)
         if not access_check['allowed']:
@@ -2550,26 +2550,26 @@ async def adhar_handler(event):
                     buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
                 await event.respond(msg, buttons=buttons)
             raise events.StopPropagation
-    
+
     if not get_tool_status('aadhar_info'):
         await event.respond('❌ This tool is currently disabled!')
         raise events.StopPropagation
-    
+
     match = event.pattern_match
     if not match.group(1):
         await event.respond('🆔 Usage: /adhar <aadhar_number>\n\nExample: /adhar 123456789012')
         raise events.StopPropagation
-    
+
     aadhar = match.group(1).strip()
     validated = validate_aadhar(aadhar)
-    
+
     if not validated:
         await event.respond('❌ Invalid Aadhar number!\n\nFormat: 12 digit number')
         raise events.StopPropagation
-    
+
     processing_msg = await event.respond('⏳ Processing...')
     data, error = await call_tool_api('aadhar_info', validated)
-    
+
     if data:
         response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
         if len(response) > 4000:
@@ -2577,7 +2577,7 @@ async def adhar_handler(event):
         await processing_msg.edit(response)
     else:
         await processing_msg.edit(f"❌ Error: {error}")
-    
+
     raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern=r'/family(?:\s+(.+))?'))
@@ -2585,7 +2585,7 @@ async def family_handler(event):
     sender = await event.get_sender()
     if not sender:
         return
-    
+
     if sender.id != owner_id:
         access_check = await check_user_access(sender.id)
         if not access_check['allowed']:
@@ -2602,26 +2602,26 @@ async def family_handler(event):
                     buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
                 await event.respond(msg, buttons=buttons)
             raise events.StopPropagation
-    
+
     if not get_tool_status('aadhar_family'):
         await event.respond('❌ This tool is currently disabled!')
         raise events.StopPropagation
-    
+
     match = event.pattern_match
     if not match.group(1):
         await event.respond('👨‍👩‍👧‍👦 Usage: /family <aadhar_number>\n\nExample: /family 123456789012')
         raise events.StopPropagation
-    
+
     aadhar = match.group(1).strip()
     validated = validate_aadhar(aadhar)
-    
+
     if not validated:
         await event.respond('❌ Invalid Aadhar number!\n\nFormat: 12 digit number')
         raise events.StopPropagation
-    
+
     processing_msg = await event.respond('⏳ Processing...')
     data, error = await call_tool_api('aadhar_family', validated)
-    
+
     if data:
         response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
         if len(response) > 4000:
@@ -2629,7 +2629,7 @@ async def family_handler(event):
         await processing_msg.edit(response)
     else:
         await processing_msg.edit(f"❌ Error: {error}")
-    
+
     raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern=r'/vhe(?:\s+(.+))?'))
@@ -2637,7 +2637,7 @@ async def vhe_handler(event):
     sender = await event.get_sender()
     if not sender:
         return
-    
+
     if sender.id != owner_id:
         access_check = await check_user_access(sender.id)
         if not access_check['allowed']:
@@ -2654,26 +2654,26 @@ async def vhe_handler(event):
                     buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
                 await event.respond(msg, buttons=buttons)
             raise events.StopPropagation
-    
+
     if not get_tool_status('vehicle_info'):
         await event.respond('❌ This tool is currently disabled!')
         raise events.StopPropagation
-    
+
     match = event.pattern_match
     if not match.group(1):
         await event.respond('🚗 Usage: /vhe <vehicle_number>\n\nExample: /vhe MH12AB1234')
         raise events.StopPropagation
-    
+
     vehicle = match.group(1).strip()
     validated = validate_vehicle(vehicle)
-    
+
     if not validated:
         await event.respond('❌ Invalid vehicle number!\n\nFormat: Indian Vehicle Number\nExample: MH12AB1234')
         raise events.StopPropagation
-    
+
     processing_msg = await event.respond('⏳ Processing...')
     data, error = await call_tool_api('vehicle_info', validated)
-    
+
     if data:
         response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
         if len(response) > 4000:
@@ -2681,7 +2681,7 @@ async def vhe_handler(event):
         await processing_msg.edit(response)
     else:
         await processing_msg.edit(f"❌ Error: {error}")
-    
+
     raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern=r'/ifsc(?:\s+(.+))?'))
@@ -2689,7 +2689,7 @@ async def ifsc_handler(event):
     sender = await event.get_sender()
     if not sender:
         return
-    
+
     if sender.id != owner_id:
         access_check = await check_user_access(sender.id)
         if not access_check['allowed']:
@@ -2706,26 +2706,26 @@ async def ifsc_handler(event):
                     buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
                 await event.respond(msg, buttons=buttons)
             raise events.StopPropagation
-    
+
     if not get_tool_status('ifsc_info'):
         await event.respond('❌ This tool is currently disabled!')
         raise events.StopPropagation
-    
+
     match = event.pattern_match
     if not match.group(1):
         await event.respond('🏦 Usage: /ifsc <ifsc_code>\n\nExample: /ifsc SBIN0001234')
         raise events.StopPropagation
-    
+
     ifsc = match.group(1).strip()
     validated = validate_ifsc(ifsc)
-    
+
     if not validated:
         await event.respond('❌ Invalid IFSC code!\n\nFormat: 11 character code\nExample: SBIN0001234')
         raise events.StopPropagation
-    
+
     processing_msg = await event.respond('⏳ Processing...')
     data, error = await call_tool_api('ifsc_info', validated)
-    
+
     if data:
         response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
         if len(response) > 4000:
@@ -2733,7 +2733,7 @@ async def ifsc_handler(event):
         await processing_msg.edit(response)
     else:
         await processing_msg.edit(f"❌ Error: {error}")
-    
+
     raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern=r'/pak(?:\s+(.+))?'))
@@ -2741,7 +2741,7 @@ async def pak_handler(event):
     sender = await event.get_sender()
     if not sender:
         return
-    
+
     if sender.id != owner_id:
         access_check = await check_user_access(sender.id)
         if not access_check['allowed']:
@@ -2758,26 +2758,26 @@ async def pak_handler(event):
                     buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
                 await event.respond(msg, buttons=buttons)
             raise events.StopPropagation
-    
+
     if not get_tool_status('pak_num'):
         await event.respond('❌ This tool is currently disabled!')
         raise events.StopPropagation
-    
+
     match = event.pattern_match
     if not match.group(1):
         await event.respond('🇵🇰 Usage: /pak <pakistan_number>\n\nExample: /pak 03001234567')
         raise events.StopPropagation
-    
+
     pak_num = match.group(1).strip()
     validated = validate_pak_number(pak_num)
-    
+
     if not validated:
         await event.respond('❌ Invalid Pakistan number!\n\nFormat: 10-11 digit number\nExample: 03001234567')
         raise events.StopPropagation
-    
+
     processing_msg = await event.respond('⏳ Processing...')
     data, error = await call_tool_api('pak_num', validated)
-    
+
     if data:
         response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
         if len(response) > 4000:
@@ -2785,7 +2785,7 @@ async def pak_handler(event):
         await processing_msg.edit(response)
     else:
         await processing_msg.edit(f"❌ Error: {error}")
-    
+
     raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern=r'/pin(?:\s+(.+))?'))
@@ -2793,7 +2793,7 @@ async def pin_handler(event):
     sender = await event.get_sender()
     if not sender:
         return
-    
+
     if sender.id != owner_id:
         access_check = await check_user_access(sender.id)
         if not access_check['allowed']:
@@ -2810,26 +2810,26 @@ async def pin_handler(event):
                     buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
                 await event.respond(msg, buttons=buttons)
             raise events.StopPropagation
-    
+
     if not get_tool_status('pincode_info'):
         await event.respond('❌ This tool is currently disabled!')
         raise events.StopPropagation
-    
+
     match = event.pattern_match
     if not match.group(1):
         await event.respond('📍 Usage: /pin <pincode>\n\nExample: /pin 400001')
         raise events.StopPropagation
-    
+
     pincode = match.group(1).strip()
     validated = validate_pincode(pincode)
-    
+
     if not validated:
         await event.respond('❌ Invalid PIN code!\n\nFormat: 6 digit code\nExample: 400001')
         raise events.StopPropagation
-    
+
     processing_msg = await event.respond('⏳ Processing...')
     data, error = await call_tool_api('pincode_info', validated)
-    
+
     if data:
         response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
         if len(response) > 4000:
@@ -2837,7 +2837,7 @@ async def pin_handler(event):
         await processing_msg.edit(response)
     else:
         await processing_msg.edit(f"❌ Error: {error}")
-    
+
     raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern=r'/imei(?:\s+(.+))?'))
@@ -2845,7 +2845,7 @@ async def imei_handler(event):
     sender = await event.get_sender()
     if not sender:
         return
-    
+
     if sender.id != owner_id:
         access_check = await check_user_access(sender.id)
         if not access_check['allowed']:
@@ -2862,26 +2862,26 @@ async def imei_handler(event):
                     buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
                 await event.respond(msg, buttons=buttons)
             raise events.StopPropagation
-    
+
     if not get_tool_status('imei_info'):
         await event.respond('❌ This tool is currently disabled!')
         raise events.StopPropagation
-    
+
     match = event.pattern_match
     if not match.group(1):
         await event.respond('📱 Usage: /imei <imei_number>\n\nExample: /imei 123456789012345')
         raise events.StopPropagation
-    
+
     imei = match.group(1).strip()
     validated = validate_imei(imei)
-    
+
     if not validated:
         await event.respond('❌ Invalid IMEI number!\n\nFormat: 15 digit number\nExample: 123456789012345')
         raise events.StopPropagation
-    
+
     processing_msg = await event.respond('⏳ Processing...')
     data, error = await call_tool_api('imei_info', validated)
-    
+
     if data:
         response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
         if len(response) > 4000:
@@ -2889,7 +2889,7 @@ async def imei_handler(event):
         await processing_msg.edit(response)
     else:
         await processing_msg.edit(f"❌ Error: {error}")
-    
+
     raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern=r'/ip(?:\s+(.+))?'))
@@ -2897,7 +2897,7 @@ async def ip_handler(event):
     sender = await event.get_sender()
     if not sender:
         return
-    
+
     if sender.id != owner_id:
         access_check = await check_user_access(sender.id)
         if not access_check['allowed']:
@@ -2914,26 +2914,26 @@ async def ip_handler(event):
                     buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
                 await event.respond(msg, buttons=buttons)
             raise events.StopPropagation
-    
+
     if not get_tool_status('ip_info'):
         await event.respond('❌ This tool is currently disabled!')
         raise events.StopPropagation
-    
+
     match = event.pattern_match
     if not match.group(1):
         await event.respond('🌐 Usage: /ip <ip_address>\n\nExample: /ip 8.8.8.8')
         raise events.StopPropagation
-    
+
     ip = match.group(1).strip()
     validated = validate_ip(ip)
-    
+
     if not validated:
         await event.respond('❌ Invalid IP address!\n\nFormat: IPv4 or IPv6\nExample: 8.8.8.8')
         raise events.StopPropagation
-    
+
     processing_msg = await event.respond('⏳ Processing...')
     data, error = await call_tool_api('ip_info', validated)
-    
+
     if data:
         response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
         if len(response) > 4000:
@@ -2941,7 +2941,7 @@ async def ip_handler(event):
         await processing_msg.edit(response)
     else:
         await processing_msg.edit(f"❌ Error: {error}")
-    
+
     raise events.StopPropagation
 
 @client.on(events.NewMessage(pattern='/hello'))
@@ -2953,7 +2953,7 @@ async def hello_handler(event):
             raise events.StopPropagation
 
     sender = await event.get_sender()
-    
+
     # Check access
     if sender.id != owner_id:
         access_check = await check_user_access(sender.id)
@@ -2970,7 +2970,7 @@ async def hello_handler(event):
                     buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
                 await event.respond(msg, buttons=buttons)
             raise events.StopPropagation
-    
+
     await event.respond(f'Hello {sender.first_name}!')
     raise events.StopPropagation
 
@@ -2983,7 +2983,7 @@ async def time_handler(event):
             raise events.StopPropagation
 
     sender = await event.get_sender()
-    
+
     # Check access
     if sender.id != owner_id:
         access_check = await check_user_access(sender.id)
