@@ -198,6 +198,48 @@ def init_settings_table():
     conn.commit()
     conn.close()
 
+def init_tools_table():
+    """Initialize tools status table"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tools (
+            tool_name TEXT PRIMARY KEY,
+            is_active INTEGER DEFAULT 0
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def set_tool_status(tool_name, is_active):
+    """Set tool active/inactive status"""
+    init_tools_table()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('INSERT OR REPLACE INTO tools (tool_name, is_active) VALUES (?, ?)', (tool_name, 1 if is_active else 0))
+    conn.commit()
+    conn.close()
+
+def get_tool_status(tool_name):
+    """Get tool active status"""
+    init_tools_table()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('SELECT is_active FROM tools WHERE tool_name = ?', (tool_name,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] == 1 if result else False
+
+def get_all_active_tools():
+    """Get all active tools"""
+    init_tools_table()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('SELECT tool_name FROM tools WHERE is_active = 1')
+    tools = cursor.fetchall()
+    conn.close()
+    return [tool[0] for tool in tools]
+
 def set_setting(key, value):
     """Set a setting value"""
     init_settings_table()

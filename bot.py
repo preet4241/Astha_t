@@ -9,7 +9,8 @@ from database import (
     get_all_users, get_stats, increment_messages,
     set_setting, get_setting, add_channel, remove_channel,
     get_all_channels, channel_exists, add_group, remove_group,
-    get_all_groups, group_exists, is_group_active
+    get_all_groups, group_exists, is_group_active,
+    set_tool_status, get_tool_status, get_all_active_tools
 )
 
 api_id = int(os.getenv('API_ID', '22880380'))
@@ -473,85 +474,246 @@ async def callback_handler(event):
         await event.edit('💾 BACKUP\n\nBot backup feature coming soon...', buttons=[[Button.inline('🔙 Back', b'owner_settings')]])
     
     elif data == b'setting_tools_handler':
-        buttons = [
-            [Button.inline('📱 Number Info', b'tool_number_info')],
-            [Button.inline('🆔 Aadhar Info', b'tool_aadhar_info'), Button.inline('👨‍👩‍👧‍👦 Aadhar to Family', b'tool_aadhar_family')],
-            [Button.inline('🚗 Vehicle Info', b'tool_vehicle_info'), Button.inline('🏦 IFSC Info', b'tool_ifsc_info')],
-            [Button.inline('🇵🇰 Pak Num Info', b'tool_pak_num'), Button.inline('📍 Pin Code Info', b'tool_pincode_info')],
-            [Button.inline('📱 IMEI Info', b'tool_imei_info'), Button.inline('🌐 IP Info', b'tool_ip_info')],
-            [Button.inline('🔙 Back', b'owner_settings')],
+        active_tools = get_all_active_tools()
+        buttons = []
+        
+        tools_map = [
+            ('number_info', '📱 Number Info', b'tool_number_info'),
+            ('aadhar_info', '🆔 Aadhar Info', b'tool_aadhar_info'),
+            ('aadhar_family', '👨‍👩‍👧‍👦 Aadhar to Family', b'tool_aadhar_family'),
+            ('vehicle_info', '🚗 Vehicle Info', b'tool_vehicle_info'),
+            ('ifsc_info', '🏦 IFSC Info', b'tool_ifsc_info'),
+            ('pak_num', '🇵🇰 Pak Num Info', b'tool_pak_num'),
+            ('pincode_info', '📍 Pin Code Info', b'tool_pincode_info'),
+            ('imei_info', '📱 IMEI Info', b'tool_imei_info'),
+            ('ip_info', '🌐 IP Info', b'tool_ip_info'),
         ]
-        tools_text = "🛠️ TOOLS HANDLER\n\nSelect a tool:"
+        
+        row = []
+        for idx, (tool_key, tool_name, callback) in enumerate(tools_map):
+            if get_tool_status(tool_key):
+                row.append(Button.inline(tool_name, callback))
+                if len(row) == 2 or idx == len(tools_map) - 1:
+                    buttons.append(row)
+                    row = []
+        
+        buttons.append([Button.inline('🔙 Back', b'owner_settings')])
+        
+        tools_text = "🛠️ TOOLS HANDLER\n\nActive Tools:"
         await event.edit(tools_text, buttons=buttons)
     
     elif data == b'tool_number_info':
+        status = get_tool_status('number_info')
+        status_text = '✅ Active' if status else '❌ Inactive'
         buttons = [
             [Button.inline('➕ Add API', b'tool_number_add_api'), Button.inline('➖ Remove API', b'tool_number_remove_api')],
             [Button.inline('📋 All API', b'tool_number_all_api'), Button.inline('📊 Status', b'tool_number_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_number_toggle')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('📱 NUMBER INFO\n\nManage Number Info APIs', buttons=buttons)
+    
+    elif data == b'tool_number_toggle':
+        current_status = get_tool_status('number_info')
+        set_tool_status('number_info', not current_status)
+        new_status = get_tool_status('number_info')
+        status_text = '✅ Active' if new_status else '❌ Inactive'
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_number_add_api'), Button.inline('➖ Remove API', b'tool_number_remove_api')],
+            [Button.inline('📋 All API', b'tool_number_all_api'), Button.inline('📊 Status', b'tool_number_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_number_toggle')],
             [Button.inline('🔙 Back', b'setting_tools_handler')],
         ]
         await event.edit('📱 NUMBER INFO\n\nManage Number Info APIs', buttons=buttons)
     
     elif data == b'tool_aadhar_info':
+        status = get_tool_status('aadhar_info')
+        status_text = '✅ Active' if status else '❌ Inactive'
         buttons = [
             [Button.inline('➕ Add API', b'tool_aadhar_add_api'), Button.inline('➖ Remove API', b'tool_aadhar_remove_api')],
             [Button.inline('📋 All API', b'tool_aadhar_all_api'), Button.inline('📊 Status', b'tool_aadhar_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_aadhar_toggle')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('🆔 AADHAR INFO\n\nManage Aadhar Info APIs', buttons=buttons)
+    
+    elif data == b'tool_aadhar_toggle':
+        current_status = get_tool_status('aadhar_info')
+        set_tool_status('aadhar_info', not current_status)
+        new_status = get_tool_status('aadhar_info')
+        status_text = '✅ Active' if new_status else '❌ Inactive'
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_aadhar_add_api'), Button.inline('➖ Remove API', b'tool_aadhar_remove_api')],
+            [Button.inline('📋 All API', b'tool_aadhar_all_api'), Button.inline('📊 Status', b'tool_aadhar_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_aadhar_toggle')],
             [Button.inline('🔙 Back', b'setting_tools_handler')],
         ]
         await event.edit('🆔 AADHAR INFO\n\nManage Aadhar Info APIs', buttons=buttons)
     
     elif data == b'tool_aadhar_family':
+        status = get_tool_status('aadhar_family')
+        status_text = '✅ Active' if status else '❌ Inactive'
         buttons = [
             [Button.inline('➕ Add API', b'tool_family_add_api'), Button.inline('➖ Remove API', b'tool_family_remove_api')],
             [Button.inline('📋 All API', b'tool_family_all_api'), Button.inline('📊 Status', b'tool_family_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_family_toggle')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('👨‍👩‍👧‍👦 AADHAR TO FAMILY\n\nManage Aadhar to Family APIs', buttons=buttons)
+    
+    elif data == b'tool_family_toggle':
+        current_status = get_tool_status('aadhar_family')
+        set_tool_status('aadhar_family', not current_status)
+        new_status = get_tool_status('aadhar_family')
+        status_text = '✅ Active' if new_status else '❌ Inactive'
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_family_add_api'), Button.inline('➖ Remove API', b'tool_family_remove_api')],
+            [Button.inline('📋 All API', b'tool_family_all_api'), Button.inline('📊 Status', b'tool_family_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_family_toggle')],
             [Button.inline('🔙 Back', b'setting_tools_handler')],
         ]
         await event.edit('👨‍👩‍👧‍👦 AADHAR TO FAMILY\n\nManage Aadhar to Family APIs', buttons=buttons)
     
     elif data == b'tool_vehicle_info':
+        status = get_tool_status('vehicle_info')
+        status_text = '✅ Active' if status else '❌ Inactive'
         buttons = [
             [Button.inline('➕ Add API', b'tool_vehicle_add_api'), Button.inline('➖ Remove API', b'tool_vehicle_remove_api')],
             [Button.inline('📋 All API', b'tool_vehicle_all_api'), Button.inline('📊 Status', b'tool_vehicle_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_vehicle_toggle')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('🚗 VEHICLE INFO\n\nManage Vehicle Info APIs', buttons=buttons)
+    
+    elif data == b'tool_vehicle_toggle':
+        current_status = get_tool_status('vehicle_info')
+        set_tool_status('vehicle_info', not current_status)
+        new_status = get_tool_status('vehicle_info')
+        status_text = '✅ Active' if new_status else '❌ Inactive'
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_vehicle_add_api'), Button.inline('➖ Remove API', b'tool_vehicle_remove_api')],
+            [Button.inline('📋 All API', b'tool_vehicle_all_api'), Button.inline('📊 Status', b'tool_vehicle_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_vehicle_toggle')],
             [Button.inline('🔙 Back', b'setting_tools_handler')],
         ]
         await event.edit('🚗 VEHICLE INFO\n\nManage Vehicle Info APIs', buttons=buttons)
     
     elif data == b'tool_ifsc_info':
+        status = get_tool_status('ifsc_info')
+        status_text = '✅ Active' if status else '❌ Inactive'
         buttons = [
             [Button.inline('➕ Add API', b'tool_ifsc_add_api'), Button.inline('➖ Remove API', b'tool_ifsc_remove_api')],
             [Button.inline('📋 All API', b'tool_ifsc_all_api'), Button.inline('📊 Status', b'tool_ifsc_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_ifsc_toggle')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('🏦 IFSC INFO\n\nManage IFSC Info APIs', buttons=buttons)
+    
+    elif data == b'tool_ifsc_toggle':
+        current_status = get_tool_status('ifsc_info')
+        set_tool_status('ifsc_info', not current_status)
+        new_status = get_tool_status('ifsc_info')
+        status_text = '✅ Active' if new_status else '❌ Inactive'
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_ifsc_add_api'), Button.inline('➖ Remove API', b'tool_ifsc_remove_api')],
+            [Button.inline('📋 All API', b'tool_ifsc_all_api'), Button.inline('📊 Status', b'tool_ifsc_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_ifsc_toggle')],
             [Button.inline('🔙 Back', b'setting_tools_handler')],
         ]
         await event.edit('🏦 IFSC INFO\n\nManage IFSC Info APIs', buttons=buttons)
     
     elif data == b'tool_pak_num':
+        status = get_tool_status('pak_num')
+        status_text = '✅ Active' if status else '❌ Inactive'
         buttons = [
             [Button.inline('➕ Add API', b'tool_pak_add_api'), Button.inline('➖ Remove API', b'tool_pak_remove_api')],
             [Button.inline('📋 All API', b'tool_pak_all_api'), Button.inline('📊 Status', b'tool_pak_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_pak_toggle')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('🇵🇰 PAK NUM INFO\n\nManage Pak Number APIs', buttons=buttons)
+    
+    elif data == b'tool_pak_toggle':
+        current_status = get_tool_status('pak_num')
+        set_tool_status('pak_num', not current_status)
+        new_status = get_tool_status('pak_num')
+        status_text = '✅ Active' if new_status else '❌ Inactive'
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_pak_add_api'), Button.inline('➖ Remove API', b'tool_pak_remove_api')],
+            [Button.inline('📋 All API', b'tool_pak_all_api'), Button.inline('📊 Status', b'tool_pak_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_pak_toggle')],
             [Button.inline('🔙 Back', b'setting_tools_handler')],
         ]
         await event.edit('🇵🇰 PAK NUM INFO\n\nManage Pak Number APIs', buttons=buttons)
     
     elif data == b'tool_pincode_info':
+        status = get_tool_status('pincode_info')
+        status_text = '✅ Active' if status else '❌ Inactive'
         buttons = [
             [Button.inline('➕ Add API', b'tool_pin_add_api'), Button.inline('➖ Remove API', b'tool_pin_remove_api')],
             [Button.inline('📋 All API', b'tool_pin_all_api'), Button.inline('📊 Status', b'tool_pin_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_pin_toggle')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('📍 PIN CODE INFO\n\nManage Pin Code APIs', buttons=buttons)
+    
+    elif data == b'tool_pin_toggle':
+        current_status = get_tool_status('pincode_info')
+        set_tool_status('pincode_info', not current_status)
+        new_status = get_tool_status('pincode_info')
+        status_text = '✅ Active' if new_status else '❌ Inactive'
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_pin_add_api'), Button.inline('➖ Remove API', b'tool_pin_remove_api')],
+            [Button.inline('📋 All API', b'tool_pin_all_api'), Button.inline('📊 Status', b'tool_pin_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_pin_toggle')],
             [Button.inline('🔙 Back', b'setting_tools_handler')],
         ]
         await event.edit('📍 PIN CODE INFO\n\nManage Pin Code APIs', buttons=buttons)
     
     elif data == b'tool_imei_info':
+        status = get_tool_status('imei_info')
+        status_text = '✅ Active' if status else '❌ Inactive'
         buttons = [
             [Button.inline('➕ Add API', b'tool_imei_add_api'), Button.inline('➖ Remove API', b'tool_imei_remove_api')],
             [Button.inline('📋 All API', b'tool_imei_all_api'), Button.inline('📊 Status', b'tool_imei_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_imei_toggle')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('📱 IMEI INFO\n\nManage IMEI Info APIs', buttons=buttons)
+    
+    elif data == b'tool_imei_toggle':
+        current_status = get_tool_status('imei_info')
+        set_tool_status('imei_info', not current_status)
+        new_status = get_tool_status('imei_info')
+        status_text = '✅ Active' if new_status else '❌ Inactive'
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_imei_add_api'), Button.inline('➖ Remove API', b'tool_imei_remove_api')],
+            [Button.inline('📋 All API', b'tool_imei_all_api'), Button.inline('📊 Status', b'tool_imei_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_imei_toggle')],
             [Button.inline('🔙 Back', b'setting_tools_handler')],
         ]
         await event.edit('📱 IMEI INFO\n\nManage IMEI Info APIs', buttons=buttons)
     
     elif data == b'tool_ip_info':
+        status = get_tool_status('ip_info')
+        status_text = '✅ Active' if status else '❌ Inactive'
         buttons = [
             [Button.inline('➕ Add API', b'tool_ip_add_api'), Button.inline('➖ Remove API', b'tool_ip_remove_api')],
             [Button.inline('📋 All API', b'tool_ip_all_api'), Button.inline('📊 Status', b'tool_ip_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_ip_toggle')],
+            [Button.inline('🔙 Back', b'setting_tools_handler')],
+        ]
+        await event.edit('🌐 IP INFO\n\nManage IP Info APIs', buttons=buttons)
+    
+    elif data == b'tool_ip_toggle':
+        current_status = get_tool_status('ip_info')
+        set_tool_status('ip_info', not current_status)
+        new_status = get_tool_status('ip_info')
+        status_text = '✅ Active' if new_status else '❌ Inactive'
+        buttons = [
+            [Button.inline('➕ Add API', b'tool_ip_add_api'), Button.inline('➖ Remove API', b'tool_ip_remove_api')],
+            [Button.inline('📋 All API', b'tool_ip_all_api'), Button.inline('📊 Status', b'tool_ip_status')],
+            [Button.inline(f'🔄 {status_text}', b'tool_ip_toggle')],
             [Button.inline('🔙 Back', b'setting_tools_handler')],
         ]
         await event.edit('🌐 IP INFO\n\nManage IP Info APIs', buttons=buttons)
