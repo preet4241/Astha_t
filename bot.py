@@ -651,7 +651,7 @@ async def callback_handler(event):
                 [Button.inline('⏰ Interval Time', b'backup_interval'), Button.inline('💾 Backup Now', b'backup_now')],
                 [Button.inline('🔙 Back', b'owner_settings')],
             ]
-            backup_text = f"💾 BACKUP SETTINGS\n\n📺 Channel: {backup_channel['title']}\n@{backup_channel['username']}\n\n⏰ Interval: {interval} hours"
+            backup_text = f"💾 BACKUP SETTINGS\n\n📺 Channel: {backup_channel['title']}\n@{backup_channel['username']}\n\n⏰ Interval: {interval} minutes"
             await event.edit(backup_text, buttons=buttons)
     
     elif data == b'backup_change_channel':
@@ -661,38 +661,13 @@ async def callback_handler(event):
     
     elif data == b'backup_interval':
         buttons = [[Button.inline('🔙 Back', b'setting_backup')]]
-        await event.edit('⏰ SET BACKUP INTERVAL\n\nSend interval in hours (e.g., 24, 12, 6):', buttons=buttons)
+        await event.edit('⏰ SET BACKUP INTERVAL\n\nSend interval in minutes (e.g., 1440, 720, 60):', buttons=buttons)
         backup_channel_temp[sender.id] = 'interval'
     
     elif data == b'backup_now':
-        backup_channel = get_backup_channel()
-        if not backup_channel:
-            await event.answer('❌ No backup channel set!', alert=True)
-        else:
-            try:
-                db_file = get_db_file()
-                
-                # Send original database file to channel
-                await client.send_file(
-                    backup_channel['channel_id'],
-                    db_file,
-                    caption=f"💾 Database Backup\n\n📅 Date: {datetime.now().strftime('%d-%m-%Y')}\n⏰ Time: {datetime.now().strftime('%H:%M:%S')}\n\n📝 To restore: Send this file back to the bot"
-                )
-                
-                set_last_backup_time(datetime.now().isoformat())
-                
-                await event.answer('✅ Backup sent to channel!', alert=True)
-                buttons = [
-                    [Button.inline('🔄 Change Channel', b'backup_change_channel')],
-                    [Button.inline('⏰ Interval Time', b'backup_interval'), Button.inline('💾 Backup Now', b'backup_now')],
-                    [Button.inline('🔙 Back', b'owner_settings')],
-                ]
-                interval = get_backup_interval()
-                backup_text = f"💾 BACKUP SETTINGS\n\n📺 Channel: {backup_channel['title']}\n@{backup_channel['username']}\n\n⏰ Interval: {interval} hours\n\n✅ Last Backup: Just now"
-                await event.edit(backup_text, buttons=buttons)
-            except Exception as e:
-                await event.answer(f'❌ Backup failed: {str(e)}', alert=True)
-                print(f"[LOG] ❌ Backup error: {e}")
+        backup_channel_temp[sender.id] = 'restore'
+        buttons = [[Button.inline('🔙 Back', b'setting_backup')]]
+        await event.edit('💾 BACKUP NOW\n\n📤 Send me the database file (.db) to restore.\n\n⚠️ Warning: This will replace the current database!', buttons=buttons)
 
     elif data == b'setting_tools_handler':
         tools_map = [
@@ -1587,10 +1562,44 @@ async def message_handler(event):
                     [Button.inline('⏰ Interval Time', b'backup_interval'), Button.inline('💾 Backup Now', b'backup_now')],
                     [Button.inline('🔙 Back', b'owner_settings')],
                 ]
-                backup_text = f"💾 BACKUP SETTINGS\n\n📺 Channel: {backup_channel['title']}\n@{backup_channel['username']}\n\n⏰ Interval: {interval} hours\n\n✅ Interval updated successfully!"
+                backup_text = f"💾 BACKUP SETTINGS\n\n📺 Channel: {backup_channel['title']}\n@{backup_channel['username']}\n\n⏰ Interval: {interval} minutes\n\n✅ Interval updated successfully!"
                 await event.respond(backup_text, buttons=buttons)
         except ValueError:
-            await event.respond('❌ Invalid number! Send interval in hours.', buttons=[[Button.inline('🔙 Back', b'setting_backup')]])
+            await event.respond('❌ Invalid number! Send interval in minutes.', buttons=[[Button.inline('🔙 Back', b'setting_backup')]])
+        raise events.StopPropagation
+    
+    if backup_channel_temp.get(sender.id) == 'restore':
+        if event.file and event.file.name and event.file.name.endswith('.db'):
+            try:
+                db_file = get_db_file()
+                
+                # Download the new database file
+                temp_file = "temp_restore.db"
+                await event.download_media(file=temp_file)
+                
+                # Delete old database
+                if os.path.exists(db_file):
+                    os.remove(db_file)
+                    print(f"[LOG] 🗑️ Old database deleted")
+                
+                # Replace with new database
+                os.rename(temp_file, db_file)
+                print(f"[LOG] ✅ Database restored from backup")
+                
+                backup_channel_temp[sender.id] = None
+                
+                await event.respond('✅ Database restored successfully!\n\n🔄 Bot restarting...')
+                
+                # Restart bot to reload database
+                import sys
+                os.execv(sys.executable, ['python'] + sys.argv)
+                
+            except Exception as e:
+                await event.respond(f'❌ Database restore failed: {str(e)}')
+                print(f"[LOG] ❌ Database restore error: {e}")
+                backup_channel_temp[sender.id] = None
+        else:
+            await event.respond('❌ Please send a valid .db database file!', buttons=[[Button.inline('🔙 Back', b'setting_backup')]])
         raise events.StopPropagation
     
     if backup_channel_temp.get(sender.id) == 'add':

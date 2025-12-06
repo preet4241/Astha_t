@@ -556,14 +556,14 @@ def get_backup_channel():
         'title': get_setting('backup_channel_title', '')
     }
 
-def set_backup_interval(hours):
-    """Set backup interval in hours"""
-    set_setting('backup_interval', str(hours))
+def set_backup_interval(minutes):
+    """Set backup interval in minutes"""
+    set_setting('backup_interval', str(minutes))
     return True
 
 def get_backup_interval():
-    """Get backup interval in hours (default 24)"""
-    return int(get_setting('backup_interval', '24'))
+    """Get backup interval in minutes (default 1440 = 24 hours)"""
+    return int(get_setting('backup_interval', '1440'))
 
 def set_last_backup_time(timestamp):
     """Set last backup timestamp"""
