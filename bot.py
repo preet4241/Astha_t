@@ -272,6 +272,34 @@ def format_text(text, sender, stats, user=None):
         bot_name='MultiBot'
     )
 
+async def check_user_access(sender_id):
+    """Check if user is banned or needs to join channels"""
+    user_data = get_user(sender_id)
+    if user_data and user_data.get('banned'):
+        return {'allowed': False, 'reason': 'banned'}
+    
+    # Check sub-force channels
+    channels = get_all_channels()
+    if channels:
+        not_joined = []
+        for ch in channels:
+            try:
+                # Check if user is member of channel
+                try:
+                    participant = await client.get_permissions(ch['channel_id'], sender_id)
+                    if not participant or participant.is_banned:
+                        not_joined.append(ch)
+                except:
+                    not_joined.append(ch)
+            except Exception as e:
+                print(f"[LOG] Error checking channel {ch['username']}: {e}")
+                not_joined.append(ch)
+        
+        if not_joined:
+            return {'allowed': False, 'reason': 'not_subscribed', 'channels': not_joined}
+    
+    return {'allowed': True}
+
 @client.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
     # Check if in group and group is removed
@@ -289,11 +317,26 @@ async def start_handler(event):
     print(f"[LOG] 🚀 /start command from {sender.first_name} (@{sender.username or 'no_username'}) ID: {sender.id}")
     add_user(sender.id, sender.username or 'unknown', sender.first_name or 'User')
 
-    user_data = get_user(sender.id)
-    if user_data and user_data.get('banned'):
-        print(f"[LOG] 🚫 Banned user {sender.id} tried to use /start")
-        await event.respond('🚫 You are BANNED from using this bot!')
-        raise events.StopPropagation
+    # Check user access (banned or sub-force)
+    if sender.id != owner_id:
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'banned':
+                print(f"[LOG] 🚫 Banned user {sender.id} tried to use /start")
+                await event.respond('🚫 You are BANNED from using this bot!')
+                raise events.StopPropagation
+            elif access_check['reason'] == 'not_subscribed':
+                msg = '⚠️ Please join these channels first:\n\n'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    msg += f"📺 {ch['title']}: {ch_username}\n"
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                buttons.append([Button.inline('✅ Check Again', b'check_subscription')])
+                await event.respond(msg, buttons=buttons)
+                raise events.StopPropagation
 
     stats = get_stats()
 
@@ -1269,6 +1312,35 @@ async def callback_handler(event):
     elif data == b'group_setting':
         await event.edit('⚙️ Group Settings: Coming soon...', buttons=[[Button.inline('🔙 Back', b'setting_groups')]])
 
+    elif data == b'check_subscription':
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'not_subscribed':
+                msg = '❌ You still need to join these channels:\n\n'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    msg += f"📺 {ch['title']}: {ch_username}\n"
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                buttons.append([Button.inline('✅ Check Again', b'check_subscription')])
+                await event.edit(msg, buttons=buttons)
+            else:
+                await event.answer('🚫 Access Denied!', alert=True)
+        else:
+            # User has joined all channels, show normal menu
+            stats = get_stats()
+            user_data = get_user(sender.id)
+            buttons = [
+                [Button.inline('🛠️ Tools', b'user_tools')],
+                [Button.inline('👤 Profile', b'user_profile'), Button.inline('❓ Help', b'user_help')],
+                [Button.inline('ℹ️ About', b'user_about')],
+            ]
+            custom_text = get_setting('user_start_text', get_default_user_text())
+            user_text = format_text(custom_text, sender, stats, user_data)
+            await event.edit(user_text, buttons=buttons)
+
     elif data == b'owner_back':
         buttons = [
             [Button.inline('🛠️ Tools', b'owner_tools')],
@@ -1345,6 +1417,24 @@ async def callback_handler(event):
         await event.edit('🛠️ TOOLS\n\nSelect a tool to use:', buttons=buttons)
 
     elif data == b'user_tools':
+        # Check access before showing tools
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'banned':
+                await event.answer('🚫 You are BANNED!', alert=True)
+            elif access_check['reason'] == 'not_subscribed':
+                msg = '⚠️ Please join these channels first:\n\n'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    msg += f"📺 {ch['title']}: {ch_username}\n"
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                buttons.append([Button.inline('✅ Check Again', b'check_subscription')])
+                await event.edit(msg, buttons=buttons)
+            return
+        
         tools_map = [
             ('number_info', '📱 Number Info', b'use_number_info'),
             ('aadhar_info', '🆔 Aadhar Info', b'use_aadhar_info'),
@@ -2297,6 +2387,476 @@ async def info_handler(event):
 
     raise events.StopPropagation
 
+@client.on(events.NewMessage(pattern=r'/num(?:\s+(.+))?'))
+async def num_handler(event):
+    sender = await event.get_sender()
+    if not sender:
+        return
+    
+    # Check access
+    if sender.id != owner_id:
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'banned':
+                await event.respond('🚫 You are BANNED from using this bot!')
+            elif access_check['reason'] == 'not_subscribed':
+                msg = '⚠️ Please join these channels first:\n\n'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    msg += f"📺 {ch['title']}: {ch_username}\n"
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                await event.respond(msg, buttons=buttons)
+            raise events.StopPropagation
+    
+    # Check if tool is active
+    if not get_tool_status('number_info'):
+        await event.respond('❌ This tool is currently disabled!')
+        raise events.StopPropagation
+    
+    match = event.pattern_match
+    if not match.group(1):
+        await event.respond('📱 Usage: /num <mobile_number>\n\nExample: /num 7999520665')
+        raise events.StopPropagation
+    
+    number = match.group(1).strip()
+    validated = validate_phone_number(number)
+    
+    if not validated:
+        await event.respond('❌ Invalid phone number!\n\nFormat: 10 digit number\nExample: 7999520665')
+        raise events.StopPropagation
+    
+    processing_msg = await event.respond('⏳ Processing...')
+    data, error = await call_tool_api('number_info', validated)
+    
+    if data:
+        response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
+        if len(response) > 4000:
+            response = response[:3997] + "..."
+        await processing_msg.edit(response)
+    else:
+        await processing_msg.edit(f"❌ Error: {error}")
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'/adhar(?:\s+(.+))?'))
+async def adhar_handler(event):
+    sender = await event.get_sender()
+    if not sender:
+        return
+    
+    if sender.id != owner_id:
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'banned':
+                await event.respond('🚫 You are BANNED from using this bot!')
+            elif access_check['reason'] == 'not_subscribed':
+                msg = '⚠️ Please join these channels first:\n\n'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    msg += f"📺 {ch['title']}: {ch_username}\n"
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                await event.respond(msg, buttons=buttons)
+            raise events.StopPropagation
+    
+    if not get_tool_status('aadhar_info'):
+        await event.respond('❌ This tool is currently disabled!')
+        raise events.StopPropagation
+    
+    match = event.pattern_match
+    if not match.group(1):
+        await event.respond('🆔 Usage: /adhar <aadhar_number>\n\nExample: /adhar 123456789012')
+        raise events.StopPropagation
+    
+    aadhar = match.group(1).strip()
+    validated = validate_aadhar(aadhar)
+    
+    if not validated:
+        await event.respond('❌ Invalid Aadhar number!\n\nFormat: 12 digit number')
+        raise events.StopPropagation
+    
+    processing_msg = await event.respond('⏳ Processing...')
+    data, error = await call_tool_api('aadhar_info', validated)
+    
+    if data:
+        response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
+        if len(response) > 4000:
+            response = response[:3997] + "..."
+        await processing_msg.edit(response)
+    else:
+        await processing_msg.edit(f"❌ Error: {error}")
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'/family(?:\s+(.+))?'))
+async def family_handler(event):
+    sender = await event.get_sender()
+    if not sender:
+        return
+    
+    if sender.id != owner_id:
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'banned':
+                await event.respond('🚫 You are BANNED from using this bot!')
+            elif access_check['reason'] == 'not_subscribed':
+                msg = '⚠️ Please join these channels first:\n\n'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    msg += f"📺 {ch['title']}: {ch_username}\n"
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                await event.respond(msg, buttons=buttons)
+            raise events.StopPropagation
+    
+    if not get_tool_status('aadhar_family'):
+        await event.respond('❌ This tool is currently disabled!')
+        raise events.StopPropagation
+    
+    match = event.pattern_match
+    if not match.group(1):
+        await event.respond('👨‍👩‍👧‍👦 Usage: /family <aadhar_number>\n\nExample: /family 123456789012')
+        raise events.StopPropagation
+    
+    aadhar = match.group(1).strip()
+    validated = validate_aadhar(aadhar)
+    
+    if not validated:
+        await event.respond('❌ Invalid Aadhar number!\n\nFormat: 12 digit number')
+        raise events.StopPropagation
+    
+    processing_msg = await event.respond('⏳ Processing...')
+    data, error = await call_tool_api('aadhar_family', validated)
+    
+    if data:
+        response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
+        if len(response) > 4000:
+            response = response[:3997] + "..."
+        await processing_msg.edit(response)
+    else:
+        await processing_msg.edit(f"❌ Error: {error}")
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'/vhe(?:\s+(.+))?'))
+async def vhe_handler(event):
+    sender = await event.get_sender()
+    if not sender:
+        return
+    
+    if sender.id != owner_id:
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'banned':
+                await event.respond('🚫 You are BANNED from using this bot!')
+            elif access_check['reason'] == 'not_subscribed':
+                msg = '⚠️ Please join these channels first:\n\n'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    msg += f"📺 {ch['title']}: {ch_username}\n"
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                await event.respond(msg, buttons=buttons)
+            raise events.StopPropagation
+    
+    if not get_tool_status('vehicle_info'):
+        await event.respond('❌ This tool is currently disabled!')
+        raise events.StopPropagation
+    
+    match = event.pattern_match
+    if not match.group(1):
+        await event.respond('🚗 Usage: /vhe <vehicle_number>\n\nExample: /vhe MH12AB1234')
+        raise events.StopPropagation
+    
+    vehicle = match.group(1).strip()
+    validated = validate_vehicle(vehicle)
+    
+    if not validated:
+        await event.respond('❌ Invalid vehicle number!\n\nFormat: Indian Vehicle Number\nExample: MH12AB1234')
+        raise events.StopPropagation
+    
+    processing_msg = await event.respond('⏳ Processing...')
+    data, error = await call_tool_api('vehicle_info', validated)
+    
+    if data:
+        response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
+        if len(response) > 4000:
+            response = response[:3997] + "..."
+        await processing_msg.edit(response)
+    else:
+        await processing_msg.edit(f"❌ Error: {error}")
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'/ifsc(?:\s+(.+))?'))
+async def ifsc_handler(event):
+    sender = await event.get_sender()
+    if not sender:
+        return
+    
+    if sender.id != owner_id:
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'banned':
+                await event.respond('🚫 You are BANNED from using this bot!')
+            elif access_check['reason'] == 'not_subscribed':
+                msg = '⚠️ Please join these channels first:\n\n'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    msg += f"📺 {ch['title']}: {ch_username}\n"
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                await event.respond(msg, buttons=buttons)
+            raise events.StopPropagation
+    
+    if not get_tool_status('ifsc_info'):
+        await event.respond('❌ This tool is currently disabled!')
+        raise events.StopPropagation
+    
+    match = event.pattern_match
+    if not match.group(1):
+        await event.respond('🏦 Usage: /ifsc <ifsc_code>\n\nExample: /ifsc SBIN0001234')
+        raise events.StopPropagation
+    
+    ifsc = match.group(1).strip()
+    validated = validate_ifsc(ifsc)
+    
+    if not validated:
+        await event.respond('❌ Invalid IFSC code!\n\nFormat: 11 character code\nExample: SBIN0001234')
+        raise events.StopPropagation
+    
+    processing_msg = await event.respond('⏳ Processing...')
+    data, error = await call_tool_api('ifsc_info', validated)
+    
+    if data:
+        response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
+        if len(response) > 4000:
+            response = response[:3997] + "..."
+        await processing_msg.edit(response)
+    else:
+        await processing_msg.edit(f"❌ Error: {error}")
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'/pak(?:\s+(.+))?'))
+async def pak_handler(event):
+    sender = await event.get_sender()
+    if not sender:
+        return
+    
+    if sender.id != owner_id:
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'banned':
+                await event.respond('🚫 You are BANNED from using this bot!')
+            elif access_check['reason'] == 'not_subscribed':
+                msg = '⚠️ Please join these channels first:\n\n'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    msg += f"📺 {ch['title']}: {ch_username}\n"
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                await event.respond(msg, buttons=buttons)
+            raise events.StopPropagation
+    
+    if not get_tool_status('pak_num'):
+        await event.respond('❌ This tool is currently disabled!')
+        raise events.StopPropagation
+    
+    match = event.pattern_match
+    if not match.group(1):
+        await event.respond('🇵🇰 Usage: /pak <pakistan_number>\n\nExample: /pak 03001234567')
+        raise events.StopPropagation
+    
+    pak_num = match.group(1).strip()
+    validated = validate_pak_number(pak_num)
+    
+    if not validated:
+        await event.respond('❌ Invalid Pakistan number!\n\nFormat: 10-11 digit number\nExample: 03001234567')
+        raise events.StopPropagation
+    
+    processing_msg = await event.respond('⏳ Processing...')
+    data, error = await call_tool_api('pak_num', validated)
+    
+    if data:
+        response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
+        if len(response) > 4000:
+            response = response[:3997] + "..."
+        await processing_msg.edit(response)
+    else:
+        await processing_msg.edit(f"❌ Error: {error}")
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'/pin(?:\s+(.+))?'))
+async def pin_handler(event):
+    sender = await event.get_sender()
+    if not sender:
+        return
+    
+    if sender.id != owner_id:
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'banned':
+                await event.respond('🚫 You are BANNED from using this bot!')
+            elif access_check['reason'] == 'not_subscribed':
+                msg = '⚠️ Please join these channels first:\n\n'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    msg += f"📺 {ch['title']}: {ch_username}\n"
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                await event.respond(msg, buttons=buttons)
+            raise events.StopPropagation
+    
+    if not get_tool_status('pincode_info'):
+        await event.respond('❌ This tool is currently disabled!')
+        raise events.StopPropagation
+    
+    match = event.pattern_match
+    if not match.group(1):
+        await event.respond('📍 Usage: /pin <pincode>\n\nExample: /pin 400001')
+        raise events.StopPropagation
+    
+    pincode = match.group(1).strip()
+    validated = validate_pincode(pincode)
+    
+    if not validated:
+        await event.respond('❌ Invalid PIN code!\n\nFormat: 6 digit code\nExample: 400001')
+        raise events.StopPropagation
+    
+    processing_msg = await event.respond('⏳ Processing...')
+    data, error = await call_tool_api('pincode_info', validated)
+    
+    if data:
+        response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
+        if len(response) > 4000:
+            response = response[:3997] + "..."
+        await processing_msg.edit(response)
+    else:
+        await processing_msg.edit(f"❌ Error: {error}")
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'/imei(?:\s+(.+))?'))
+async def imei_handler(event):
+    sender = await event.get_sender()
+    if not sender:
+        return
+    
+    if sender.id != owner_id:
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'banned':
+                await event.respond('🚫 You are BANNED from using this bot!')
+            elif access_check['reason'] == 'not_subscribed':
+                msg = '⚠️ Please join these channels first:\n\n'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    msg += f"📺 {ch['title']}: {ch_username}\n"
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                await event.respond(msg, buttons=buttons)
+            raise events.StopPropagation
+    
+    if not get_tool_status('imei_info'):
+        await event.respond('❌ This tool is currently disabled!')
+        raise events.StopPropagation
+    
+    match = event.pattern_match
+    if not match.group(1):
+        await event.respond('📱 Usage: /imei <imei_number>\n\nExample: /imei 123456789012345')
+        raise events.StopPropagation
+    
+    imei = match.group(1).strip()
+    validated = validate_imei(imei)
+    
+    if not validated:
+        await event.respond('❌ Invalid IMEI number!\n\nFormat: 15 digit number\nExample: 123456789012345')
+        raise events.StopPropagation
+    
+    processing_msg = await event.respond('⏳ Processing...')
+    data, error = await call_tool_api('imei_info', validated)
+    
+    if data:
+        response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
+        if len(response) > 4000:
+            response = response[:3997] + "..."
+        await processing_msg.edit(response)
+    else:
+        await processing_msg.edit(f"❌ Error: {error}")
+    
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'/ip(?:\s+(.+))?'))
+async def ip_handler(event):
+    sender = await event.get_sender()
+    if not sender:
+        return
+    
+    if sender.id != owner_id:
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'banned':
+                await event.respond('🚫 You are BANNED from using this bot!')
+            elif access_check['reason'] == 'not_subscribed':
+                msg = '⚠️ Please join these channels first:\n\n'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    msg += f"📺 {ch['title']}: {ch_username}\n"
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                await event.respond(msg, buttons=buttons)
+            raise events.StopPropagation
+    
+    if not get_tool_status('ip_info'):
+        await event.respond('❌ This tool is currently disabled!')
+        raise events.StopPropagation
+    
+    match = event.pattern_match
+    if not match.group(1):
+        await event.respond('🌐 Usage: /ip <ip_address>\n\nExample: /ip 8.8.8.8')
+        raise events.StopPropagation
+    
+    ip = match.group(1).strip()
+    validated = validate_ip(ip)
+    
+    if not validated:
+        await event.respond('❌ Invalid IP address!\n\nFormat: IPv4 or IPv6\nExample: 8.8.8.8')
+        raise events.StopPropagation
+    
+    processing_msg = await event.respond('⏳ Processing...')
+    data, error = await call_tool_api('ip_info', validated)
+    
+    if data:
+        response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
+        if len(response) > 4000:
+            response = response[:3997] + "..."
+        await processing_msg.edit(response)
+    else:
+        await processing_msg.edit(f"❌ Error: {error}")
+    
+    raise events.StopPropagation
+
 @client.on(events.NewMessage(pattern='/hello'))
 async def hello_handler(event):
     # Check if in removed group
@@ -2306,6 +2866,24 @@ async def hello_handler(event):
             raise events.StopPropagation
 
     sender = await event.get_sender()
+    
+    # Check access
+    if sender.id != owner_id:
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'banned':
+                await event.respond('🚫 You are BANNED from using this bot!')
+            elif access_check['reason'] == 'not_subscribed':
+                msg = '⚠️ Please join these channels first to use this bot!'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                await event.respond(msg, buttons=buttons)
+            raise events.StopPropagation
+    
     await event.respond(f'Hello {sender.first_name}!')
     raise events.StopPropagation
 
@@ -2315,6 +2893,25 @@ async def time_handler(event):
     if event.is_group:
         chat = await event.get_chat()
         if not is_group_active(chat.id):
+            raise events.StopPropagation
+
+    sender = await event.get_sender()
+    
+    # Check access
+    if sender.id != owner_id:
+        access_check = await check_user_access(sender.id)
+        if not access_check['allowed']:
+            if access_check['reason'] == 'banned':
+                await event.respond('🚫 You are BANNED from using this bot!')
+            elif access_check['reason'] == 'not_subscribed':
+                msg = '⚠️ Please join these channels first to use this bot!'
+                buttons = []
+                for ch in access_check['channels']:
+                    ch_username = ch['username']
+                    if not ch_username.startswith('@'):
+                        ch_username = '@' + ch_username
+                    buttons.append([Button.url(f"Join {ch['title']}", f"https://t.me/{ch['username']}")])
+                await event.respond(msg, buttons=buttons)
             raise events.StopPropagation
 
     current_time = datetime.now().strftime("%H:%M:%S")
