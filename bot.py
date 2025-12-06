@@ -169,25 +169,53 @@ VALIDATORS = {
 }
 
 async def call_tool_api(tool_name, validated_input):
-    """Call the API for a tool and return JSON response"""
-    api_url = get_random_tool_api(tool_name)
-    if not api_url:
+    """Call the API for a tool and return JSON response. Try multiple APIs on error."""
+    # Get all APIs for this tool
+    all_apis = get_tool_apis(tool_name)
+    
+    if not all_apis:
         return None, "No API configured for this tool. Please add an API first."
-
-    url = api_url.replace(TOOL_CONFIG[tool_name]['placeholder'], validated_input)
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return data, None
-                else:
-                    return None, f"API Error: Status {response.status}"
-    except asyncio.TimeoutError:
-        return None, "API Timeout: Request took too long"
-    except Exception as e:
-        return None, f"API Error: {str(e)}"
+    
+    # Shuffle APIs to distribute load randomly
+    import random
+    random.shuffle(all_apis)
+    
+    last_error = None
+    
+    # Try each API until one succeeds
+    for api_info in all_apis:
+        api_url = api_info['url']
+        url = api_url.replace(TOOL_CONFIG[tool_name]['placeholder'], validated_input)
+        
+        try:
+            print(f"[LOG] 🔄 Trying API: {api_url[:50]}...")
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                    if response.status == 200:
+                        try:
+                            data = await response.json()
+                            print(f"[LOG] ✅ API Success: {api_url[:50]}")
+                            return data, None
+                        except Exception as json_err:
+                            last_error = f"JSON Parse Error: {str(json_err)}"
+                            print(f"[LOG] ❌ JSON error from API: {last_error}")
+                            continue
+                    else:
+                        last_error = f"API Error: Status {response.status}"
+                        print(f"[LOG] ❌ API returned status {response.status}, trying next API...")
+                        continue
+        except asyncio.TimeoutError:
+            last_error = "API Timeout: Request took too long"
+            print(f"[LOG] ⏱️ API timeout, trying next API...")
+            continue
+        except Exception as e:
+            last_error = f"API Error: {str(e)}"
+            print(f"[LOG] ❌ API error: {last_error}, trying next API...")
+            continue
+    
+    # If all APIs failed, return the last error
+    print(f"[LOG] ❌ All APIs failed for {tool_name}")
+    return None, f"All APIs failed. Last error: {last_error}"
 
 async def send_back_button_delayed(client, chat_id, msg_id, back_callback, delay=2):
     """Send back button after delay"""

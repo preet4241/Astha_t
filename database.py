@@ -1,4 +1,3 @@
-
 import sqlite3
 import os
 from datetime import datetime
@@ -13,7 +12,7 @@ def init_db():
     """Initialize SQLite database"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -25,7 +24,7 @@ def init_db():
             status TEXT DEFAULT 'active'
         )
     ''')
-    
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS channels (
             channel_id INTEGER PRIMARY KEY,
@@ -34,7 +33,7 @@ def init_db():
             added_date TEXT
         )
     ''')
-    
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS groups (
             group_id INTEGER PRIMARY KEY,
@@ -44,7 +43,7 @@ def init_db():
             is_active INTEGER DEFAULT 1
         )
     ''')
-    
+
     conn.commit()
     conn.close()
 
@@ -53,7 +52,7 @@ def add_user(user_id, username, first_name):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     try:
         cursor.execute('''
             INSERT OR IGNORE INTO users (user_id, username, first_name, joined)
@@ -70,11 +69,11 @@ def get_user(user_id):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
     user = cursor.fetchone()
     conn.close()
-    
+
     if user:
         return {
             'user_id': user[0],
@@ -92,7 +91,7 @@ def ban_user(user_id):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     cursor.execute('UPDATE users SET banned = 1 WHERE user_id = ?', (user_id,))
     conn.commit()
     conn.close()
@@ -103,7 +102,7 @@ def unban_user(user_id):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     cursor.execute('UPDATE users SET banned = 0 WHERE user_id = ?', (user_id,))
     conn.commit()
     conn.close()
@@ -114,7 +113,7 @@ def increment_messages(user_id):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     cursor.execute('UPDATE users SET messages = messages + 1 WHERE user_id = ?', (user_id,))
     conn.commit()
     conn.close()
@@ -124,11 +123,11 @@ def get_all_users():
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     cursor.execute('SELECT * FROM users')
     users = cursor.fetchall()
     conn.close()
-    
+
     result = {}
     for user in users:
         result[str(user[0])] = {
@@ -147,11 +146,11 @@ def get_banned_users():
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     cursor.execute('SELECT * FROM users WHERE banned = 1')
     users = cursor.fetchall()
     conn.close()
-    
+
     result = []
     for user in users:
         result.append({
@@ -170,18 +169,18 @@ def get_stats():
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     cursor.execute('SELECT COUNT(*) FROM users')
     total = cursor.fetchone()[0]
-    
+
     cursor.execute('SELECT COUNT(*) FROM users WHERE banned = 1')
     banned = cursor.fetchone()[0]
-    
+
     cursor.execute('SELECT SUM(messages) FROM users')
     total_messages = cursor.fetchone()[0] or 0
-    
+
     conn.close()
-    
+
     return {
         'total_users': total,
         'banned_users': banned,
@@ -290,13 +289,7 @@ def get_tool_apis(tool_name):
     conn.close()
     return [{'id': api[0], 'url': api[1], 'added_date': api[2]} for api in apis]
 
-def get_random_tool_api(tool_name):
-    """Get a random API for a tool"""
-    import random
-    apis = get_tool_apis(tool_name)
-    if apis:
-        return random.choice(apis)['url']
-    return None
+# Removed get_random_tool_api - now using get_tool_apis directly in bot.py
 
 def set_setting(key, value):
     """Set a setting value"""
@@ -322,7 +315,7 @@ def add_channel(channel_username, channel_title):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     try:
         cursor.execute('''
             INSERT INTO channels (channel_username, channel_title, added_date)
@@ -334,7 +327,7 @@ def add_channel(channel_username, channel_title):
         result = False
     finally:
         conn.close()
-    
+
     return result
 
 def remove_channel(channel_username):
@@ -342,7 +335,7 @@ def remove_channel(channel_username):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     cursor.execute('DELETE FROM channels WHERE channel_username = ?', (channel_username,))
     conn.commit()
     conn.close()
@@ -353,11 +346,11 @@ def get_all_channels():
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     cursor.execute('SELECT channel_id, channel_username, channel_title, added_date FROM channels ORDER BY added_date DESC')
     channels = cursor.fetchall()
     conn.close()
-    
+
     result = []
     for ch in channels:
         result.append({
@@ -366,7 +359,7 @@ def get_all_channels():
             'title': ch[2],
             'added_date': ch[3]
         })
-    
+
     return result
 
 def channel_exists(channel_username):
@@ -374,11 +367,11 @@ def channel_exists(channel_username):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     cursor.execute('SELECT 1 FROM channels WHERE channel_username = ?', (channel_username,))
     exists = cursor.fetchone() is not None
     conn.close()
-    
+
     return exists
 
 def increment_channel_join(channel_username):
@@ -386,7 +379,7 @@ def increment_channel_join(channel_username):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     cursor.execute('UPDATE channels SET joined_count = joined_count + 1 WHERE channel_username = ?', (channel_username,))
     conn.commit()
     conn.close()
@@ -396,7 +389,7 @@ def deactivate_expired_channels():
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     current_time = datetime.now().isoformat()
     cursor.execute('UPDATE channels SET is_active = 0 WHERE expiry_date IS NOT NULL AND expiry_date <= ? AND is_active = 1', (current_time,))
     conn.commit()
@@ -407,7 +400,7 @@ def check_channel_limits():
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     cursor.execute('UPDATE channels SET is_active = 0 WHERE join_limit > 0 AND joined_count >= join_limit AND is_active = 1')
     conn.commit()
     conn.close()
@@ -417,12 +410,12 @@ def add_group(group_id, group_username, group_title):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     try:
         # Check if group exists (even if inactive)
         cursor.execute('SELECT is_active FROM groups WHERE group_id = ?', (group_id,))
         existing = cursor.fetchone()
-        
+
         if existing:
             # Group exists, reactivate it
             cursor.execute('''
@@ -436,7 +429,7 @@ def add_group(group_id, group_username, group_title):
                 INSERT INTO groups (group_id, group_username, group_title, added_date, is_active)
                 VALUES (?, ?, ?, ?, 1)
             ''', (group_id, group_username, group_title, datetime.now().isoformat()))
-        
+
         conn.commit()
         result = True
     except Exception as e:
@@ -444,7 +437,7 @@ def add_group(group_id, group_username, group_title):
         result = False
     finally:
         conn.close()
-    
+
     return result
 
 def remove_group(group_id):
@@ -452,7 +445,7 @@ def remove_group(group_id):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     try:
         cursor.execute('UPDATE groups SET is_active = 0 WHERE group_id = ?', (group_id,))
         conn.commit()
@@ -468,7 +461,7 @@ def remove_group(group_id):
             print(f"Error adding is_active column: {e2}")
     finally:
         conn.close()
-    
+
     return True
 
 def is_group_active(group_id):
@@ -476,12 +469,12 @@ def is_group_active(group_id):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     try:
         cursor.execute('SELECT is_active FROM groups WHERE group_id = ?', (group_id,))
         result = cursor.fetchone()
         conn.close()
-        
+
         if result:
             return result[0] == 1
         return False
@@ -495,7 +488,7 @@ def get_all_groups():
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     try:
         cursor.execute('SELECT group_id, group_username, group_title, added_date FROM groups WHERE is_active = 1 ORDER BY added_date DESC')
         groups = cursor.fetchall()
@@ -504,9 +497,9 @@ def get_all_groups():
         print(f"Error fetching active groups: {e}")
         cursor.execute('SELECT group_id, group_username, group_title, added_date FROM groups ORDER BY added_date DESC')
         groups = cursor.fetchall()
-    
+
     conn.close()
-    
+
     result = []
     for grp in groups:
         result.append({
@@ -515,7 +508,7 @@ def get_all_groups():
             'title': grp[2],
             'added_date': grp[3]
         })
-    
+
     return result
 
 def group_exists(group_id):
@@ -523,7 +516,7 @@ def group_exists(group_id):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
+
     try:
         cursor.execute('SELECT 1 FROM groups WHERE group_id = ? AND is_active = 1', (group_id,))
         exists = cursor.fetchone() is not None
@@ -532,9 +525,9 @@ def group_exists(group_id):
         print(f"Error checking group existence: {e}")
         cursor.execute('SELECT 1 FROM groups WHERE group_id = ?', (group_id,))
         exists = cursor.fetchone() is not None
-    
+
     conn.close()
-    
+
     return exists
 
 def set_backup_channel(channel_id, channel_username, channel_title):
@@ -549,7 +542,7 @@ def get_backup_channel():
     channel_id = get_setting('backup_channel_id', '')
     if not channel_id:
         return None
-    
+
     return {
         'channel_id': int(channel_id),
         'username': get_setting('backup_channel_username', ''),
