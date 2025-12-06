@@ -5,6 +5,10 @@ from datetime import datetime
 
 DB_FILE = 'bot_database.db'
 
+def get_db_file():
+    """Get database file path"""
+    return DB_FILE
+
 def init_db():
     """Initialize SQLite database"""
     conn = sqlite3.connect(DB_FILE)

@@ -17,7 +17,8 @@ from database import (
     set_tool_status, get_tool_status, get_all_active_tools,
     get_tool_apis, add_tool_api, remove_tool_api, get_random_tool_api,
     set_backup_channel, get_backup_channel, set_backup_interval, 
-    get_backup_interval, set_last_backup_time, get_last_backup_time
+    get_backup_interval, set_last_backup_time, get_last_backup_time,
+    get_db_file
 )
 
 api_id = int(os.getenv('API_ID', '22880380'))
@@ -669,20 +670,18 @@ async def callback_handler(event):
             await event.answer('❌ No backup channel set!', alert=True)
         else:
             try:
-                import shutil
-                backup_file = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
-                shutil.copy(DB_FILE, backup_file)
+                db_file = get_db_file()
                 
+                # Send original database file to channel
                 await client.send_file(
                     backup_channel['channel_id'],
-                    backup_file,
-                    caption=f"💾 Database Backup\n\n📅 Date: {datetime.now().strftime('%d-%m-%Y')}\n⏰ Time: {datetime.now().strftime('%H:%M:%S')}"
+                    db_file,
+                    caption=f"💾 Database Backup\n\n📅 Date: {datetime.now().strftime('%d-%m-%Y')}\n⏰ Time: {datetime.now().strftime('%H:%M:%S')}\n\n📝 To restore: Send this file back to the bot"
                 )
                 
-                os.remove(backup_file)
                 set_last_backup_time(datetime.now().isoformat())
                 
-                await event.answer('✅ Backup sent successfully!', alert=True)
+                await event.answer('✅ Backup sent to channel!', alert=True)
                 buttons = [
                     [Button.inline('🔄 Change Channel', b'backup_change_channel')],
                     [Button.inline('⏰ Interval Time', b'backup_interval'), Button.inline('💾 Backup Now', b'backup_now')],
@@ -1477,6 +1476,36 @@ async def message_handler(event):
     sender = await event.get_sender()
     if not sender:
         return
+
+    # Handle database file restore (only for owner)
+    if sender.id == owner_id and event.file and event.file.name and event.file.name.endswith('.db'):
+        try:
+            db_file = get_db_file()
+            
+            # Download the new database file
+            temp_file = "temp_restore.db"
+            await event.download_media(file=temp_file)
+            
+            # Delete old database
+            if os.path.exists(db_file):
+                os.remove(db_file)
+                print(f"[LOG] 🗑️ Old database deleted")
+            
+            # Replace with new database
+            os.rename(temp_file, db_file)
+            print(f"[LOG] ✅ Database restored from file")
+            
+            await event.respond('✅ Database restored successfully!\n\n🔄 Bot restarting...')
+            
+            # Restart bot to reload database
+            import sys
+            os.execv(sys.executable, ['python'] + sys.argv)
+            
+        except Exception as e:
+            await event.respond(f'❌ Database restore failed: {str(e)}')
+            print(f"[LOG] ❌ Database restore error: {e}")
+        
+        raise events.StopPropagation
 
     # Handle API URL input
     if sender.id in tool_api_action:
