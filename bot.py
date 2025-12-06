@@ -940,15 +940,15 @@ async def callback_handler(event):
     
     elif data == b'owner_tools':
         tools_map = [
-            ('number_info', '📱 Number Info', b'tool_number_info'),
-            ('aadhar_info', '🆔 Aadhar Info', b'tool_aadhar_info'),
-            ('aadhar_family', '👨‍👩‍👧‍👦 Aadhar to Family', b'tool_aadhar_family'),
-            ('vehicle_info', '🚗 Vehicle Info', b'tool_vehicle_info'),
-            ('ifsc_info', '🏦 IFSC Info', b'tool_ifsc_info'),
-            ('pak_num', '🇵🇰 Pak Num Info', b'tool_pak_num'),
-            ('pincode_info', '📍 Pin Code Info', b'tool_pincode_info'),
-            ('imei_info', '📱 IMEI Info', b'tool_imei_info'),
-            ('ip_info', '🌐 IP Info', b'tool_ip_info'),
+            ('number_info', '📱 Number Info', b'use_number_info'),
+            ('aadhar_info', '🆔 Aadhar Info', b'use_aadhar_info'),
+            ('aadhar_family', '👨‍👩‍👧‍👦 Aadhar to Family', b'use_aadhar_family'),
+            ('vehicle_info', '🚗 Vehicle Info', b'use_vehicle_info'),
+            ('ifsc_info', '🏦 IFSC Info', b'use_ifsc_info'),
+            ('pak_num', '🇵🇰 Pak Num Info', b'use_pak_num'),
+            ('pincode_info', '📍 Pin Code Info', b'use_pincode_info'),
+            ('imei_info', '📱 IMEI Info', b'use_imei_info'),
+            ('ip_info', '🌐 IP Info', b'use_ip_info'),
         ]
         
         active_tools = []
@@ -968,15 +968,15 @@ async def callback_handler(event):
     
     elif data == b'user_tools':
         tools_map = [
-            ('number_info', '📱 Number Info', b'tool_number_info'),
-            ('aadhar_info', '🆔 Aadhar Info', b'tool_aadhar_info'),
-            ('aadhar_family', '👨‍👩‍👧‍👦 Aadhar to Family', b'tool_aadhar_family'),
-            ('vehicle_info', '🚗 Vehicle Info', b'tool_vehicle_info'),
-            ('ifsc_info', '🏦 IFSC Info', b'tool_ifsc_info'),
-            ('pak_num', '🇵🇰 Pak Num Info', b'tool_pak_num'),
-            ('pincode_info', '📍 Pin Code Info', b'tool_pincode_info'),
-            ('imei_info', '📱 IMEI Info', b'tool_imei_info'),
-            ('ip_info', '🌐 IP Info', b'tool_ip_info'),
+            ('number_info', '📱 Number Info', b'use_number_info'),
+            ('aadhar_info', '🆔 Aadhar Info', b'use_aadhar_info'),
+            ('aadhar_family', '👨‍👩‍👧‍👦 Aadhar to Family', b'use_aadhar_family'),
+            ('vehicle_info', '🚗 Vehicle Info', b'use_vehicle_info'),
+            ('ifsc_info', '🏦 IFSC Info', b'use_ifsc_info'),
+            ('pak_num', '🇵🇰 Pak Num Info', b'use_pak_num'),
+            ('pincode_info', '📍 Pin Code Info', b'use_pincode_info'),
+            ('imei_info', '📱 IMEI Info', b'use_imei_info'),
+            ('ip_info', '🌐 IP Info', b'use_ip_info'),
         ]
         
         active_tools = []
@@ -1019,6 +1019,14 @@ async def callback_handler(event):
         custom_text = get_setting('user_start_text', get_default_user_text())
         user_text = format_text(custom_text, sender, stats, user_data)
         await event.edit(user_text, buttons=buttons)
+    
+    elif data.startswith(b'use_'):
+        tool_key = data.decode().replace('use_', '')
+        if tool_key in TOOL_CONFIG:
+            tool_session[sender.id] = tool_key
+            back_btn = b'owner_tools' if sender.id == owner_id else b'user_tools'
+            buttons = [[Button.inline('❌ Cancel', back_btn)]]
+            await event.edit(TOOL_CONFIG[tool_key]['prompt'], buttons=buttons)
     
     elif data == b'broadcast_detail':
         stats = broadcast_stats.get(sender.id)
@@ -1065,6 +1073,32 @@ async def message_handler(event):
     sender = await event.get_sender()
     if not sender:
         return
+    
+    if sender.id in tool_session:
+        tool_key = tool_session[sender.id]
+        validator = VALIDATORS.get(tool_key)
+        if validator:
+            validated = validator(event.text)
+            if validated:
+                back_btn = b'owner_tools' if sender.id == owner_id else b'user_tools'
+                processing_msg = await event.respond('⏳ Processing...')
+                
+                data, error = await call_tool_api(tool_key, validated)
+                
+                if data:
+                    response = f"```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```"
+                    if len(response) > 4000:
+                        response = response[:3997] + "..."
+                    await processing_msg.edit(response)
+                    asyncio.create_task(send_back_button_delayed(client, sender.id, processing_msg.id, back_btn, 2))
+                else:
+                    await processing_msg.edit(f"❌ Error: {error}", buttons=[[Button.inline('👈 Back', back_btn)]])
+                
+                del tool_session[sender.id]
+            else:
+                back_btn = b'owner_tools' if sender.id == owner_id else b'user_tools'
+                await event.respond(f"❌ Invalid input!\n\n{TOOL_CONFIG[tool_key]['prompt']}", buttons=[[Button.inline('❌ Cancel', back_btn)]])
+        raise events.StopPropagation
     
     if channel_action_temp.get(sender.id) == 'add':
         ch_name = None
