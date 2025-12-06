@@ -776,7 +776,6 @@ async def callback_handler(event):
         await event.edit(status_text, buttons=buttons)
     
     elif data == b'owner_tools':
-        buttons = []
         tools_map = [
             ('number_info', '📱 Number Info', b'tool_number_info'),
             ('aadhar_info', '🆔 Aadhar Info', b'tool_aadhar_info'),
@@ -789,19 +788,22 @@ async def callback_handler(event):
             ('ip_info', '🌐 IP Info', b'tool_ip_info'),
         ]
         
-        row = []
-        for idx, (tool_key, tool_name, callback) in enumerate(tools_map):
+        active_tools = []
+        for tool_key, tool_name, callback in tools_map:
             if get_tool_status(tool_key):
-                row.append(Button.inline(tool_name, callback))
-                if len(row) == 2 or idx == len(tools_map) - 1:
-                    buttons.append(row)
-                    row = []
+                active_tools.append((tool_name, callback))
+        
+        buttons = []
+        for i in range(0, len(active_tools), 2):
+            if i + 1 < len(active_tools):
+                buttons.append([Button.inline(active_tools[i][0], active_tools[i][1]), Button.inline(active_tools[i+1][0], active_tools[i+1][1])])
+            else:
+                buttons.append([Button.inline(active_tools[i][0], active_tools[i][1])])
         
         buttons.append([Button.inline('🔙 Back', b'owner_back')])
-        await event.edit('🛠️ TOOLS\n\nSelect an active tool to use:', buttons=buttons)
+        await event.edit('🛠️ TOOLS\n\nSelect a tool to use:', buttons=buttons)
     
     elif data == b'user_tools':
-        buttons = []
         tools_map = [
             ('number_info', '📱 Number Info', b'tool_number_info'),
             ('aadhar_info', '🆔 Aadhar Info', b'tool_aadhar_info'),
@@ -814,16 +816,20 @@ async def callback_handler(event):
             ('ip_info', '🌐 IP Info', b'tool_ip_info'),
         ]
         
-        row = []
-        for idx, (tool_key, tool_name, callback) in enumerate(tools_map):
+        active_tools = []
+        for tool_key, tool_name, callback in tools_map:
             if get_tool_status(tool_key):
-                row.append(Button.inline(tool_name, callback))
-                if len(row) == 2 or idx == len(tools_map) - 1:
-                    buttons.append(row)
-                    row = []
+                active_tools.append((tool_name, callback))
+        
+        buttons = []
+        for i in range(0, len(active_tools), 2):
+            if i + 1 < len(active_tools):
+                buttons.append([Button.inline(active_tools[i][0], active_tools[i][1]), Button.inline(active_tools[i+1][0], active_tools[i+1][1])])
+            else:
+                buttons.append([Button.inline(active_tools[i][0], active_tools[i][1])])
         
         buttons.append([Button.inline('🔙 Back', b'user_back')])
-        await event.edit('🛠️ TOOLS\n\nSelect an active tool to use:', buttons=buttons)
+        await event.edit('🛠️ TOOLS\n\nSelect a tool to use:', buttons=buttons)
     
     elif data == b'user_profile':
         user = get_user(sender.id)
