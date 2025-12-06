@@ -474,7 +474,6 @@ async def callback_handler(event):
         await event.edit('💾 BACKUP\n\nBot backup feature coming soon...', buttons=[[Button.inline('🔙 Back', b'owner_settings')]])
     
     elif data == b'setting_tools_handler':
-        active_tools = get_all_active_tools()
         buttons = []
         
         tools_map = [
@@ -491,15 +490,14 @@ async def callback_handler(event):
         
         row = []
         for idx, (tool_key, tool_name, callback) in enumerate(tools_map):
-            if get_tool_status(tool_key):
-                row.append(Button.inline(tool_name, callback))
-                if len(row) == 2 or idx == len(tools_map) - 1:
-                    buttons.append(row)
-                    row = []
+            row.append(Button.inline(tool_name, callback))
+            if len(row) == 2 or idx == len(tools_map) - 1:
+                buttons.append(row)
+                row = []
         
         buttons.append([Button.inline('🔙 Back', b'owner_settings')])
         
-        tools_text = "🛠️ TOOLS HANDLER\n\nActive Tools:"
+        tools_text = "🛠️ TOOLS HANDLER\n\nManage Tools (Active/Inactive):"
         await event.edit(tools_text, buttons=buttons)
     
     elif data == b'tool_number_info':
