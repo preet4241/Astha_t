@@ -474,8 +474,6 @@ async def callback_handler(event):
         await event.edit('💾 BACKUP\n\nBot backup feature coming soon...', buttons=[[Button.inline('🔙 Back', b'owner_settings')]])
     
     elif data == b'setting_tools_handler':
-        buttons = []
-        
         tools_map = [
             ('number_info', '📱 Number Info', b'tool_number_info'),
             ('aadhar_info', '🆔 Aadhar Info', b'tool_aadhar_info'),
@@ -488,14 +486,14 @@ async def callback_handler(event):
             ('ip_info', '🌐 IP Info', b'tool_ip_info'),
         ]
         
-        row = []
-        for idx, (tool_key, tool_name, callback) in enumerate(tools_map):
-            row.append(Button.inline(tool_name, callback))
-            if len(row) == 2 or idx == len(tools_map) - 1:
-                buttons.append(row)
-                row = []
-        
-        buttons.append([Button.inline('🔙 Back', b'owner_settings')])
+        buttons = [
+            [Button.inline(tools_map[0][1], tools_map[0][2])],
+            [Button.inline(tools_map[1][1], tools_map[1][2]), Button.inline(tools_map[2][1], tools_map[2][2])],
+            [Button.inline(tools_map[3][1], tools_map[3][2]), Button.inline(tools_map[4][1], tools_map[4][2])],
+            [Button.inline(tools_map[5][1], tools_map[5][2]), Button.inline(tools_map[6][1], tools_map[6][2])],
+            [Button.inline(tools_map[7][1], tools_map[7][2]), Button.inline(tools_map[8][1], tools_map[8][2])],
+            [Button.inline('🔙 Back', b'owner_settings')],
+        ]
         
         tools_text = "🛠️ TOOLS HANDLER\n\nManage Tools (Active/Inactive):"
         await event.edit(tools_text, buttons=buttons)
